@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   setMainDoc: vi.fn(),
   openFile: vi.fn(),
   recompile: vi.fn(),
+  stopCompile: vi.fn(async () => {}),
   revealEditor: vi.fn(),
   files: {
     projectId: "linked-a" as string | null,
@@ -29,8 +30,9 @@ vi.mock("@/store/settings", () => ({
   useSettingsStore: { getState: () => ({ revealEditor: mocks.revealEditor }) },
 }));
 vi.mock("@/store/compile", () => ({
+  compileIsBusy: () => mocks.compileStatus === "compiling",
   useCompileStore: {
-    getState: () => ({ recompile: mocks.recompile, status: mocks.compileStatus }),
+    getState: () => ({ recompile: mocks.recompile, status: mocks.compileStatus, stopCompile: mocks.stopCompile }),
   },
 }));
 
@@ -62,6 +64,15 @@ describe("choosing the main document", () => {
     expect(mocks.openFile).toHaveBeenCalledWith("a/paper.tex");
     expect(mocks.revealEditor).toHaveBeenCalled();
     expect(mocks.recompile).toHaveBeenCalledWith({ origin: "automatic" });
+  });
+
+  it("stops a running compile before it switches, so the switch never waits on it", async () => {
+    mocks.compileStatus = "compiling";
+    mocks.setMainDoc.mockImplementation(async () => {
+      expect(mocks.stopCompile).toHaveBeenCalledOnce();
+    });
+    await chooseMainDocument("other.tex");
+    expect(mocks.setMainDoc).toHaveBeenCalledWith("other.tex");
   });
 
   it("does not start a compile when the folder already had a main", async () => {

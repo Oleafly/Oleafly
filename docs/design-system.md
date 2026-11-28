@@ -503,6 +503,13 @@ A notice strip above the editor is a `WorkspaceBanner` from
 are `WorkspaceBannerButton`s in the same tone. When a button's action fails,
 a `WorkspaceBannerAlert` under the row says why.
 
+A one-time offer in the bottom corner, such as adding the Finder Quick Action
+or opening document types with Oleafly, is an `OfferCard` from
+`ui/offer-card.tsx`. It takes an icon, a title, a message and a close button,
+and turns the message into an alert when `failed` is set. Its buttons are
+`OfferCardAction`s, `primary` for the offer and `secondary` for "not now".
+Only one offer shows at a time, so a second one waits until the first closes.
+
 Hover help is a `Tooltip` from `ui/tooltip.tsx`, never the native `title`
 attribute. It renders into the body and stays inside the window.
 

@@ -1,6 +1,7 @@
 use tauri::ipc::Response;
 use tauri::{Manager, State};
 
+use crate::app_error::AppError;
 use crate::document_engine::{CompileRequest, CompileResult, CompileTarget};
 use crate::paths;
 use crate::proc::NoConsole;
@@ -375,8 +376,10 @@ pub async fn compile_project(
     fast: Option<bool>,
     halt_on_error: Option<bool>,
     typst_variant: Option<String>,
+    whole_project: Option<bool>,
 ) -> Result<CompileResult, String> {
-    let options = requested_compile_options(offline, fast, halt_on_error);
+    let mut options = requested_compile_options(offline, fast, halt_on_error);
+    options.whole_project = whole_project.unwrap_or(false);
     let ticket = state
         .compile_ticket
         .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
@@ -518,8 +521,13 @@ pub async fn compile_project(
                 &meta.engine,
                 &meta.main_doc,
                 &toolchain_identity,
-                pdf_plan
-                    .and_then(|plan| plan.compiled(result.has_pdf, result.output_id.as_deref())),
+                pdf_plan.and_then(|plan| {
+                    plan.compiled(
+                        result.has_pdf,
+                        result.output_id.as_deref(),
+                        result.html_output.as_deref(),
+                    )
+                }),
             );
         }
         if let (true, Some(output_id)) = (result.has_pdf, result.output_id.clone()) {
@@ -643,6 +651,7 @@ pub(crate) fn requested_compile_options(
         typst: None,
         typst_packages: None,
         typst_settings: None,
+        whole_project: false,
     }
 }
 
@@ -1170,6 +1179,50 @@ pub async fn read_compiled_pdf(project_id: String) -> Result<Response, String> {
     .await
     .map_err(|e| e.to_string())??;
     Ok(Response::new(bytes))
+}
+
+#[tauri::command]
+pub async fn read_compiled_page(
+    project_id: String,
+    main_document: String,
+) -> Result<Response, String> {
+    let bytes = tauri::async_runtime::spawn_blocking(move || -> Result<Vec<u8>, String> {
+        let page = crate::notebook_toolchain::compiled_page(&project_id, &main_document)
+            .ok_or_else(|| String::from(AppError::new("notebook.no_html_output")))?;
+        std::fs::read(page).map_err(|error| {
+            String::from(AppError::new("notebook.no_html_output").detail(error.to_string()))
+        })
+    })
+    .await
+    .map_err(|e| e.to_string())??;
+    Ok(Response::new(bytes))
+}
+
+#[tauri::command]
+pub async fn compiled_output_path(
+    project_id: String,
+    main_document: String,
+    page: bool,
+) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || -> Result<String, String> {
+        let output = if page {
+            crate::notebook_toolchain::compiled_html(&project_id, Some(&main_document))?
+        } else {
+            let (_, root) = crate::project::read_compile_root(&project_id, &main_document)?;
+            crate::document_engine::existing_compiled_pdf_path(
+                &project_id,
+                &root.engine,
+                &main_document,
+            )?
+            .filter(|pdf| pdf.is_file())
+            .ok_or_else(|| "no compiled PDF: this project has not been compiled".to_string())?
+        };
+        Ok(oleafly_core::plain_path(&output)
+            .to_string_lossy()
+            .into_owned())
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 const MAX_BUILD_ARTIFACT_BYTES: u64 = 1024 * 1024;

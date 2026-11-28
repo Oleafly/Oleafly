@@ -147,7 +147,7 @@ test("corpus package completion is curated and package-gated", async ({
   ).toBe(true);
 });
 
-test("% !TEX root override and broken-root warning surface in the toolbar", async ({
+test("a broken % !TEX root shows a warning in the toolbar", async ({
   tauriPage,
 }) => {
   test.setTimeout(300_000);
@@ -155,15 +155,6 @@ test("% !TEX root override and broken-root warning surface in the toolbar", asyn
   await expect(tauriPage.locator(".cm-content")).toBeVisible({
     timeout: 20_000,
   });
-
-  await replaceEditorSource(
-    tauriPage,
-    "% !TEX root = main.tex\n\\documentclass{article}\n\\begin{document}\nx\n\\end{document}\n",
-  );
-  await expect(
-    tauriPage.getByTestId("tex-root-indicator"),
-  ).toBeVisible({ timeout: 15_000 });
-  await maybeScreenshot(tauriPage, "e2e-texroot-active.png");
 
   await replaceEditorSource(
     tauriPage,
@@ -188,7 +179,9 @@ test("% !TEX root override compiles the declared root", async ({ tauriPage }) =>
     tauriPage,
     "% !TEX root = thesis.tex\n\\documentclass{article}\n\\begin{document}\nSTOREDMAINMARK\n\\end{document}\n",
   );
-  await expect(tauriPage.getByTestId("tex-root-indicator")).toBeVisible({ timeout: 15_000 });
+  await expect(
+    tauriPage.locator('[aria-label="Explorer file tree"] [data-path="thesis.tex"] [data-testid="compile-target-marker"]'),
+  ).toBeVisible({ timeout: 15_000 });
   await compileAndWait(tauriPage);
   await expectCompiledPdfContains(tauriPage, "ROOTOVERRIDEMARK");
   await expectCompiledPdfAbsent(tauriPage, "STOREDMAINMARK");
@@ -210,7 +203,9 @@ test("a second complete document compiles while it is the open file", async ({ t
   await tauriPage.evaluate(
     `import("/src/store/files.ts").then(({ useFilesStore }) => useFilesStore.getState().openFile("letter.tex"))`,
   );
-  await expect(tauriPage.getByTestId("tex-root-indicator")).toBeVisible({ timeout: 15_000 });
+  await expect(
+    tauriPage.locator('[aria-label="Explorer file tree"] [data-path="letter.tex"] [data-testid="compile-target-marker"]'),
+  ).toBeVisible({ timeout: 15_000 });
   await compileAndWait(tauriPage);
   await expectCompiledPdfContains(tauriPage, "OPENLETTERMARK");
   await expectCompiledPdfAbsent(tauriPage, "STOREDMAINMARK");

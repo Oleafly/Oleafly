@@ -101,9 +101,15 @@
     "useTypst": "使用 Typst {{version}}",
     "installTool": "安装 {{tool}} {{version}}",
     "installToolSize": "安装 {{tool}} {{version}}（{{size}}）",
+    "installPackage": "安装 {{name}}",
+    "checkAgain": "再次检查",
     "engineSettings": "打开引擎设置",
     "useTectonic": "使用 Tectonic",
-    "useTectonicForEveryone": "为所有人使用 Tectonic"
+    "useTectonicForEveryone": "为所有人使用 Tectonic",
+    "saveHtml": "将 HTML 保存到项目",
+    "downloadPageAsPdf": "将当前显示的页面下载为 PDF",
+    "copyPath": "复制输出路径",
+    "invertPage": "反转网页颜色"
   },
   "html": {
     "building": "正在构建网页",
@@ -131,10 +137,14 @@
     "namePlaceholder": "文档.pdf",
     "imageSaved": "图片已保存到项目。",
     "pdfSaved": "PDF 已保存到项目。",
-    "failed": "无法保存到项目。"
+    "failed": "无法保存到项目。",
+    "htmlDescription": "将当前显示的网页作为单个 HTML 文件保存到项目树中。",
+    "htmlPlaceholder": "文档.html",
+    "htmlSaved": "网页已保存到项目。"
   },
   "sync": {
     "toggle": "编译时同步 PDF",
+    "toggleHtml": "编译时同步 HTML",
     "failed": "无法更新 {{name}}。Oleafly 会在下次编译时重试。",
     "fastMode": "快速编译不会更新此 PDF。",
     "localOnly": "此副本仅保存在这台电脑上。"
@@ -152,7 +162,8 @@
   },
   "empty": {
     "compileUnavailable": "目前无法编译 PDF。",
-    "compileFailed": "编译失败。打开日志标签页查看出错原因。"
+    "compileFailed": "编译失败。打开日志标签页查看出错原因。",
+    "notCompiled": "{{name}} 尚未编译。"
   },
   "a11y": {
     "stale": "PDF 已过期，非最新版本。{{explanation}}",

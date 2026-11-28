@@ -148,6 +148,7 @@
       "specialFile": "Não é um arquivo comum",
       "tooLarge": "Grande demais para sincronizar",
       "packageFolder": "Pacotes instalados que você pode reinstalar",
+      "privateFile": "Arquivo de sessão do R que pode conter senhas ou chaves",
       "zipLeftovers": "Sobra de uma descompactação",
       "unreadable": "Não foi possível ler",
       "downloadFailed": "Não foi possível baixar",

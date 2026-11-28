@@ -148,6 +148,7 @@
       "specialFile": "Nu este un fișier obișnuit",
       "tooLarge": "Prea mare pentru sincronizare",
       "packageFolder": "Pachete instalate pe care le poți reinstala",
+      "privateFile": "Fișier de sesiune R care poate conține parole sau chei",
       "zipLeftovers": "Rămas după dezarhivare",
       "unreadable": "Nu a putut fi citit",
       "downloadFailed": "Nu a putut fi descărcat",

@@ -103,9 +103,15 @@
     "useTypst": "Utiliser Typst {{version}}",
     "installTool": "Installer {{tool}} {{version}}",
     "installToolSize": "Installer {{tool}} {{version}} ({{size}})",
+    "installPackage": "Installer {{name}}",
+    "checkAgain": "Vérifier à nouveau",
     "engineSettings": "Ouvrir les paramètres du moteur",
     "useTectonic": "Utiliser Tectonic",
-    "useTectonicForEveryone": "Utiliser Tectonic pour tout le monde"
+    "useTectonicForEveryone": "Utiliser Tectonic pour tout le monde",
+    "saveHtml": "Enregistrer le HTML dans le projet",
+    "downloadPageAsPdf": "Télécharger la page affichée en PDF",
+    "copyPath": "Copier le chemin du résultat",
+    "invertPage": "Inverser les couleurs de la page web"
   },
   "html": {
     "building": "Génération de la page web",
@@ -133,10 +139,14 @@
     "namePlaceholder": "document.pdf",
     "imageSaved": "Image enregistrée dans le projet.",
     "pdfSaved": "PDF enregistré dans le projet.",
-    "failed": "Impossible d'enregistrer dans le projet."
+    "failed": "Impossible d'enregistrer dans le projet.",
+    "htmlDescription": "Enregistre la page web affichée dans l'arborescence du projet, en un seul fichier HTML.",
+    "htmlPlaceholder": "document.html",
+    "htmlSaved": "Page web enregistrée dans le projet."
   },
   "sync": {
     "toggle": "Synchroniser le PDF à la compilation",
+    "toggleHtml": "Synchroniser le HTML à la compilation",
     "failed": "Impossible de mettre à jour {{name}}. Oleafly réessaiera à la prochaine compilation.",
     "fastMode": "Les compilations rapides ne mettent pas à jour ce PDF.",
     "localOnly": "Cette copie reste sur cet ordinateur."
@@ -154,7 +164,8 @@
   },
   "empty": {
     "compileUnavailable": "La compilation PDF est actuellement indisponible.",
-    "compileFailed": "La compilation a échoué. Ouvrez l'onglet Journaux pour voir ce qui s'est passé."
+    "compileFailed": "La compilation a échoué. Ouvrez l'onglet Journaux pour voir ce qui s'est passé.",
+    "notCompiled": "{{name}} n'a pas encore été compilé."
   },
   "a11y": {
     "stale": "PDF obsolète, non à jour. {{explanation}}",

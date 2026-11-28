@@ -1072,6 +1072,13 @@
       "hoverPreview": {
         "description": "Muestra la última página compilada al pasar el cursor por un proyecto de la biblioteca.",
         "label": "Ver el PDF al pasar el cursor"
+      },
+      "html": {
+        "title": "Vista previa de páginas web",
+        "darkMode": {
+          "label": "Modo oscuro de páginas web",
+          "description": "Para documentos de Quarto que generan una página web. Con Seguir el tema de la aplicación, la página se oscurece cuando la aplicación está en modo oscuro, y las imágenes conservan sus colores. El botón para invertir colores de la barra de la vista previa cambia esto a Activado o Desactivado."
+        }
       }
     },
     "sectionName": "Apariencia",
@@ -1791,7 +1798,17 @@
         "heading": "Lenguajes",
         "tooltip": "El código de los documentos de Quarto y Calepin se ejecuta con estos programas.",
         "notFound": "No se encontró",
-        "note": "Oleafly ejecuta el código con R, Python y Julia ya instalados en este equipo. Nunca los instala."
+        "note": "Oleafly ejecuta el código con R, Python y Julia en este equipo. Puede descargar por ti los instaladores oficiales de R y Python e instalar knitr, rmarkdown y Jupyter.",
+        "installerNote": "Oleafly descarga el instalador oficial, lo comprueba y lo abre. Cuando termine la instalación, vuelve aquí y comprueba de nuevo.",
+        "finishInstaller": "Termina el instalador de {{name}} y luego comprueba de nuevo.",
+        "checkAgain": "Comprobar de nuevo",
+        "packageManager": {
+          "r": "Instala R con tu gestor de paquetes, por ejemplo sudo apt install r-base o sudo dnf install R. Luego comprueba de nuevo.",
+          "python": "Instala Python 3 con tu gestor de paquetes, por ejemplo sudo apt install python3 python3-venv. Luego comprueba de nuevo."
+        },
+        "installYourself": "Instala {{name}} desde su sitio web y luego comprueba de nuevo.",
+        "packagesMissing": "Sin instalar: {{packages}}",
+        "installPackages": "Instalar {{packages}}"
       },
       "codeNote": "El código de un documento solo se ejecuta después de que permitas el código para ese proyecto en el menú de compilación.",
       "progress": {
@@ -1799,7 +1816,9 @@
         "downloading": "Descargando {{percent}} %",
         "verifying": "Comprobando",
         "extracting": "Descomprimiendo",
-        "done": "Terminando"
+        "done": "Terminando",
+        "opening": "Abriendo el instalador",
+        "installing": "Instalando"
       },
       "error": {
         "load": "No se pudo comprobar si hay Quarto, Calepin y lenguajes.",
@@ -2777,11 +2796,14 @@
     },
     "actions": {
       "install": "Instalar",
-      "repair": "Reparar"
+      "repair": "Reparar",
+      "makeDefault": "Make default",
+      "stopDefault": "Stop using Oleafly"
     },
     "failed": {
       "install": "No se pudo instalar. Inténtalo de nuevo.",
-      "remove": "No se pudo quitar. Inténtalo de nuevo."
+      "remove": "No se pudo quitar. Inténtalo de nuevo.",
+      "defaultApp": "Oleafly couldn't become the default for these files. Try again, or pick Oleafly in your system settings."
     },
     "packaged": "Instalado con el paquete de Oleafly.",
     "quickAction": {
@@ -2814,7 +2836,33 @@
       "outdated": "Está desactualizado o macOS lo bloqueó. Repáralo para recuperarlo.",
       "elsewhere": "El menú abre otra copia de Oleafly. Repáralo para usar esta.",
       "moved": "Apunta a una copia de Oleafly que se movió. Repáralo para usar esta.",
-      "noDefaultFileManager": "Tu sistema no tiene un gestor de archivos predeterminado para carpetas, así que esta entrada podría abrir todas las carpetas en Oleafly. Quítala."
+      "noDefaultFileManager": "Tu sistema no tiene un gestor de archivos predeterminado para carpetas, así que esta entrada podría abrir todas las carpetas en Oleafly. Quítala.",
+      "noFileType": "This Mac doesn't know this file type, so Oleafly can't set it from here. In Finder, choose Get Info › Open with › Oleafly › Change All."
+    },
+    "defaultLatex": {
+      "label": "LaTeX files (.tex)",
+      "description": "Double-click a .tex file to open it in Oleafly."
+    },
+    "defaultTypst": {
+      "label": "Typst files (.typ)",
+      "description": "Double-click a .typ file to open it in Oleafly."
+    },
+    "defaultMarkdown": {
+      "label": "Markdown files (.md)",
+      "description": "Double-click a .md or .markdown file to open it in Oleafly."
+    },
+    "defaultQuarto": {
+      "label": "Quarto and R Markdown files",
+      "description": "Double-click a .qmd or .Rmd file to open it in Oleafly."
+    },
+    "defaultAppState": {
+      "installed": "Default",
+      "notInstalled": "Not default",
+      "needsAttention": "Not available"
+    },
+    "defaultAppConfirm": {
+      "macos": "If macOS asks, choose Use Oleafly. This row updates when you come back.",
+      "windows": "Pick Oleafly for this file type in Windows Settings. This row updates when you come back."
     }
   },
   "research": {

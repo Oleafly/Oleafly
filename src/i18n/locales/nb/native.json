@@ -58,7 +58,7 @@
     },
     "trustFolder": {
       "title": "Stole på denne mappen?",
-      "message": "Oleafly slår på Git, terminalen, agenter og LaTeX-verktøy for {{name}}. Stol bare på mapper der du kjenner innholdet.",
+      "message": "Oleafly slår på Git, terminalen, agenter, latexmk og Quarto for {{name}}. Kode i mappen kjører først når du tillater det. Stol bare på mapper der du kjenner innholdet.",
       "messageParent": "Oleafly stoler på {{name}} og alle mappene i den, også de du åpner senere.",
       "messageRepository": "Oleafly kjører Git i {{name}} med repositoriets egne innstillinger og hooks.",
       "confirm": "Stol på"

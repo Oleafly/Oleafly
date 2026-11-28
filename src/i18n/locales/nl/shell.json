@@ -430,7 +430,7 @@
       "off": "Uit",
       "on": "Aan",
       "title": "Automatisch compileren",
-      "help": "Compileert een paar seconden nadat je stopt met typen. Het geopende bestand wordt eerst opgeslagen.",
+      "help": "Compileert een paar seconden nadat je stopt met typen en slaat eerst het geopende bestand op. Na Stoppen wacht het op je volgende bewerking. Een project dat code uitvoert, compileert bij openen alleen als dit aan staat.",
       "typstHelp": "Typst blijft draaien en werkt de PDF bij kort nadat je stopt met typen. Zolang dit aanstaat, wordt het geopende bestand vanzelf opgeslagen.",
       "typstStarting": "Typst starten",
       "typstRestarting": "Typst start opnieuw",
@@ -454,6 +454,7 @@
       "title": "Omgaan met compileerfouten"
     },
     "fromScratch": "Helemaal opnieuw compileren",
+    "wholeProject": "Hele Quarto-project renderen",
     "mode": {
       "fast": "Snel <note>[concept]</note>",
       "normal": "Normaal",
@@ -470,9 +471,8 @@
     },
     "texRootBroken": "% !TEX root in {{file}} wijst naar een ontbrekend bestand ({{target}})",
     "texRootLabel": "TEX root",
-    "texRootName": "root: {{name}}",
     "texRootNotTex": "% !TEX root in {{file}} wijst naar {{target}}, dat geen LaTeX-bestand is",
-    "texRootOverride": "root: {{path}} (ingesteld door % !TEX root in {{file}})",
+    "texRootOverride": "Compileert {{path}} (ingesteld door % !TEX root in {{file}})",
     "typstVersion": {
       "title": "Typst-versie (dit project)",
       "help": "Zet een versie vast om de uitvoer van dit project gelijk te houden als Oleafly Typst bijwerkt. De optie Standaard volgt de versie die bij Instellingen is gekozen. Om versies te installeren of dit project met een nieuwere te testen, ga je naar Instellingen → Engines → Typst.",
@@ -513,18 +513,19 @@
     },
     "code": {
       "title": "Code (deze computer)",
-      "help": "Quarto en Calepin kunnen de R-, Python- en Julia-code in dit project uitvoeren. Code draait met jouw rechten, dus sta het alleen toe voor een project dat je vertrouwt. De keuze geldt alleen voor deze computer.",
+      "help": "Quarto en Calepin kunnen de R-, Python- en Julia-code in dit project uitvoeren. Code draait met jouw rechten, dus sta het alleen toe voor een project dat je vertrouwt. De keuze geldt alleen voor deze computer en blijft staan tot je hem uitzet. Uitzetten stopt een lopende compilatie.",
       "off": "Uit",
       "run": "Code uitvoeren op deze computer"
     },
     "sharedViewer": "Alleen eigenaren en bewerkers kunnen deze instellingen in een gedeeld project wijzigen.",
     "coauthorsChanged": "Gewijzigd door medeauteurs sinds je laatste keer compileren",
-    "texRootDocument": "root: {{path}} (heeft een eigen \\documentclass)",
-    "texRootInclude": "root: {{path}} (neemt {{file}} op)",
-    "texRootFormat": "root: {{path}} (een {{format}}-document, gebouwd met een eigen engine)",
+    "texRootDocument": "Compileert {{path}} (heeft een eigen \\documentclass)",
+    "texRootStandalone": "Compileert {{path}} (een zelfstandig document)",
+    "texRootInclude": "Compileert {{path}} (neemt {{file}} op)",
+    "texRootFormat": "Compileert {{path}} (een {{format}}-document, gebouwd met een eigen engine)",
     "target": {
       "title": "Compileerdoel",
-      "help": "Met Het geopende bestand volgen wordt een bestand met een eigen \\documentclass op zichzelf gecompileerd. Een hoofdstuk of sectie compileert het document dat het opneemt. Een Markdown-, Typst- of Quarto-document wordt op zichzelf gecompileerd met een eigen engine als het project een ander formaat heeft. Andere bestanden compileren het hoofddocument. Een % !TEX root-opmerking gaat altijd voor.",
+      "help": "Met Het geopende bestand volgen compileert een zelfstandig document op zichzelf: een LaTeX-bestand met een eigen \\documentclass, of een Markdown-, Typst- of Quarto-bestand dat geen ander document opneemt. Een hoofdstuk of sectie compileert het document dat het opneemt, en de bestanden van een _quarto.yml-project compileren met het project. Andere bestanden compileren het hoofddocument. Een % !TEX root-opmerking wint altijd.",
       "open": "Het geopende bestand volgen",
       "main": "Altijd het hoofddocument",
       "change": "Hoofddocument wijzigen…"
@@ -668,7 +669,16 @@
     "followed": "{{name}} moet code uitvoeren, en code draait alleen voor het hoofddocument. Maak {{name}} het hoofddocument en sta daarna code toe.",
     "needed": "Dit document moet zijn code uitvoeren om te bouwen, en code staat uit voor dit project. Sta code alleen toe als je elk bestand in het project vertrouwt.",
     "skipped": "De code in dit document is niet uitgevoerd, omdat code uit staat voor dit project. Sta code alleen toe als je elk bestand in het project vertrouwt.",
-    "storedResults": "De PDF toont coderesultaten die bij een eerdere run zijn opgeslagen, omdat code uit staat voor dit project. Sta code alleen toe als je elk bestand in het project vertrouwt."
+    "storedResults": "De PDF toont coderesultaten die bij een eerdere run zijn opgeslagen, omdat code uit staat voor dit project. Sta code alleen toe als je elk bestand in het project vertrouwt.",
+    "reasons": {
+      "extensions": "Dit project heeft Quarto-extensies die programma's kunnen uitvoeren, dus het bouwt alleen met code toegestaan. Sta code alleen toe als je elk bestand in het project vertrouwt.",
+      "environment": "Dit project heeft _environment-bestanden die Quarto laadt, dus het bouwt alleen met code toegestaan. Sta code alleen toe als je elk bestand in het project vertrouwt.",
+      "shortcode": "Dit document gebruikt een shortcode die niet in Quarto zit, en shortcodes kunnen programma's uitvoeren, dus het bouwt alleen met code toegestaan. Sta code alleen toe als je elk bestand in het project vertrouwt.",
+      "filter": "Dit document voegt een filter toe, en filters kunnen programma's uitvoeren, dus het bouwt alleen met code toegestaan. Sta code alleen toe als je elk bestand in het project vertrouwt.",
+      "pdf_engine": "Dit document geeft opties door aan de PDF-engine, die programma's kan uitvoeren, dus het bouwt alleen met code toegestaan. Sta code alleen toe als je elk bestand in het project vertrouwt.",
+      "outside": "Dit document leest een bestand buiten het project, dus het bouwt alleen met code toegestaan. Sta code alleen toe als je elk bestand in het project vertrouwt.",
+      "unchecked": "Oleafly kon dit document niet op code controleren, dus het bouwt alleen met code toegestaan. Sta code alleen toe als je elk bestand in het project vertrouwt."
+    }
   },
   "typstCjkFonts": {
     "message": "Dit document bevat Chinese, Japanse of Koreaanse tekst die geen enkel lettertype op deze computer kan tonen, dus die tekst ontbreekt in de PDF.",
@@ -825,7 +835,7 @@
     },
     "noMain": "Nog geen hoofddocument. Kies een bestand en daarna Instellen als hoofddocument.",
     "trust": {
-      "banner": "Oleafly heeft sommige functies in deze map beperkt. De map vertrouwen om Git, de terminal, agents en shell escape aan te zetten?",
+      "banner": "Oleafly heeft sommige functies in deze map beperkt. De map vertrouwen om Git, de terminal, agents, latexmk en Quarto aan te zetten?",
       "trustFolder": "Deze map vertrouwen",
       "trustParent": "De bovenliggende map vertrouwen",
       "trustRepository": "De repository vertrouwen",
@@ -1808,5 +1818,20 @@
       "saved": "{{name}} opgeslagen.",
       "missingName": "Geef het fragment een naam."
     }
+  },
+  "defaultAppsOffer": {
+    "title": "Open your documents with Oleafly?",
+    "body": "Pick the file types that should open in Oleafly when you double-click them. Oleafly only asks once. You can change this later in Settings › General.",
+    "types": {
+      "latex": "LaTeX (.tex)",
+      "typst": "Typst (.typ)",
+      "markdown": "Markdown (.md)",
+      "quarto": "Quarto and R Markdown (.qmd, .Rmd)"
+    },
+    "use": "Use Oleafly",
+    "keep": "Keep my apps",
+    "done": "Done. These files now open in Oleafly.",
+    "doneMac": "Done. If macOS asks you to confirm a type another app opens now, choose Use Oleafly.",
+    "failed": "Some file types couldn't be changed. Try again in Settings › General."
   }
 }

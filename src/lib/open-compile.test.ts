@@ -5,6 +5,7 @@ import {
   type OpenCompileObservation,
   type OpenCompileRequest,
   openCompileHydrated,
+  opensWithoutRunningCode,
   resetOpenCompileMarker,
   settleOpenCompile,
   shouldCompileOnOpen,
@@ -179,5 +180,15 @@ describe("settleOpenCompile", () => {
       retries: { projectId: "project", used: 1 },
     });
     expect(resetOpenCompileMarker(null, spent)).toBeNull();
+  });
+});
+
+describe("opensWithoutRunningCode", () => {
+  it("skips the open compile only for a project that runs code while Auto compile is off", () => {
+    expect(opensWithoutRunningCode({ id: "quarto", allow_shell_escape: true }, false)).toBe(true);
+    expect(opensWithoutRunningCode({ id: "calepin", allow_shell_escape: true }, false)).toBe(true);
+    expect(opensWithoutRunningCode({ id: "quarto", allow_shell_escape: true }, true)).toBe(false);
+    expect(opensWithoutRunningCode({ id: "quarto", allow_shell_escape: false }, false)).toBe(false);
+    expect(opensWithoutRunningCode({ id: "latexmk", allow_shell_escape: true }, false)).toBe(false);
   });
 });

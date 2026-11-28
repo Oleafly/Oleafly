@@ -259,6 +259,7 @@ mod tests {
             compile_dir: None,
             displaced: None,
             reattach: None,
+            loose_file: false,
             extra: BTreeMap::new(),
         }
     }

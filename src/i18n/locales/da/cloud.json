@@ -139,6 +139,7 @@
       "specialFile": "Ikke en almindelig fil",
       "tooLarge": "For stor til at synkronisere",
       "packageFolder": "Installerede pakker, som du kan geninstallere",
+      "privateFile": "R-sessionsfil, der kan indeholde adgangskoder eller nøgler",
       "zipLeftovers": "Rester fra udpakning",
       "unreadable": "Kunne ikke læses",
       "downloadFailed": "Kunne ikke downloades",

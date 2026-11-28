@@ -5,7 +5,13 @@ const mocks = vi.hoisted(() => ({
     installing: false,
     info: null as { latexmk_blocker?: { code: string; params: Record<string, string> } | null } | null,
   },
-  files: { projectId: "paper" as string | null, engine: { id: "latexmk" } },
+  files: {
+    projectId: "paper" as string | null,
+    engine: { id: "latexmk" },
+    setShellEscape: vi.fn(async (_allow: boolean) => {}),
+  },
+  compileBusy: false,
+  stopCompile: vi.fn(async () => {}),
   refresh: vi.fn(async () => {}),
   openPicker: vi.fn(),
 }));
@@ -21,10 +27,14 @@ vi.mock("@/store/files", () => ({
   useFilesStore: { getState: () => mocks.files },
 }));
 vi.mock("@/lib/compile-preview", () => ({ recompileWithPreview: vi.fn() }));
+vi.mock("@/store/compile", () => ({
+  compileIsBusy: () => mocks.compileBusy,
+  useCompileStore: { getState: () => ({ stopCompile: mocks.stopCompile }) },
+}));
 vi.mock("@/lib/log", () => ({ logError: vi.fn() }));
 vi.mock("@/lib/toast", () => ({ toast: { errorUnique: vi.fn() } }));
 
-import { offerTexSetupAfterSwitch } from "./latex-compile-actions";
+import { applyShellEscape, offerTexSetupAfterSwitch } from "./latex-compile-actions";
 
 const blocked = { latexmk_blocker: { code: "tex.latexmk_missing", params: {} } };
 
@@ -35,6 +45,48 @@ beforeEach(() => {
   mocks.files.engine = { id: "latexmk" };
   mocks.refresh.mockReset().mockResolvedValue(undefined);
   mocks.openPicker.mockReset();
+  mocks.compileBusy = false;
+  mocks.stopCompile.mockReset().mockResolvedValue(undefined);
+  mocks.files.setShellEscape.mockReset().mockResolvedValue(undefined);
+});
+
+describe("applyShellEscape", () => {
+  it("stops a running compile before it turns code off", async () => {
+    mocks.compileBusy = true;
+    mocks.files.setShellEscape.mockImplementation(async () => {
+      expect(mocks.stopCompile).toHaveBeenCalledOnce();
+    });
+    await expect(applyShellEscape(false)).resolves.toBe(true);
+    expect(mocks.files.setShellEscape).toHaveBeenCalledWith(false);
+  });
+
+  it("leaves a running compile alone when code is turned on", async () => {
+    mocks.compileBusy = true;
+    await applyShellEscape(true);
+    expect(mocks.stopCompile).not.toHaveBeenCalled();
+  });
+
+  it("joins a repeated click and runs the opposite one after the change in flight", async () => {
+    const finishes: (() => void)[] = [];
+    mocks.files.setShellEscape.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          finishes.push(resolve);
+        }),
+    );
+    const first = applyShellEscape(true);
+    expect(applyShellEscape(true)).toBe(first);
+    const second = applyShellEscape(false);
+    expect(second).not.toBe(first);
+    expect(applyShellEscape(false)).toBe(second);
+    await vi.waitFor(() => expect(mocks.files.setShellEscape).toHaveBeenCalledOnce());
+    finishes[0]();
+    await first;
+    await vi.waitFor(() => expect(mocks.files.setShellEscape).toHaveBeenCalledTimes(2));
+    finishes[1]();
+    await second;
+    expect(mocks.files.setShellEscape.mock.calls.map(([allow]) => allow)).toEqual([true, false]);
+  });
 });
 
 describe("offerTexSetupAfterSwitch", () => {

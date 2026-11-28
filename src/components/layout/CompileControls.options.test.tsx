@@ -303,6 +303,32 @@ describe("CompileControls options menu", () => {
     );
     expect(useSettingsStore.getState().viewMode).toBe("split");
   });
+
+  it("renders a whole Quarto book or website only from inside one", async () => {
+    useFilesStore.setState({
+      engine: { ...LATEX_ENGINE, id: "quarto", label: "Quarto" },
+      mainDoc: "index.qmd",
+      tree: [
+        { path: "index.qmd", is_dir: false },
+        { path: "intro.qmd", is_dir: false },
+      ],
+    } as unknown as ReturnType<typeof useFilesStore.getState>);
+    const { unmount } = render(<CompileControls />);
+    await openOptions();
+    expect(screen.queryByRole("menuitem", { name: copy.wholeProject })).not.toBeInTheDocument();
+    unmount();
+
+    useFilesStore.setState({
+      tree: [
+        { path: "_quarto.yml", is_dir: false },
+        { path: "index.qmd", is_dir: false },
+      ],
+    } as unknown as ReturnType<typeof useFilesStore.getState>);
+    render(<CompileControls />);
+    const user = await openOptions();
+    await user.click(screen.getByRole("menuitem", { name: copy.wholeProject }));
+    await waitFor(() => expect(recompile).toHaveBeenCalledWith({ wholeProject: true }));
+  });
 });
 
 describe("CompileControls external commands", () => {
@@ -316,14 +342,19 @@ describe("CompileControls external commands", () => {
   });
 });
 
-describe("CompileControls TeX root indicator", () => {
-  it("says nothing while the stored main document is in effect", () => {
+async function compileTooltip(): Promise<HTMLElement> {
+  await userEvent.setup().hover(screen.getByTestId("compile-button"));
+  return screen.findByRole("tooltip");
+}
+
+describe("CompileControls compile target note", () => {
+  it("says nothing extra while the stored main document is in effect", async () => {
     render(<CompileControls />);
-    expect(screen.queryByTestId("tex-root-indicator")).not.toBeInTheDocument();
     expect(screen.queryByTestId("tex-root-broken")).not.toBeInTheDocument();
+    expect(await compileTooltip()).not.toHaveTextContent(copy.texRootDocument.split(" ")[0]);
   });
 
-  it("names the document a root comment redirects to", () => {
+  it("names the document a root comment redirects to", async () => {
     useFilesStore.setState({
       activePath: "chapter.tex",
       files: {
@@ -336,8 +367,8 @@ describe("CompileControls TeX root indicator", () => {
       ],
     } as unknown as ReturnType<typeof useFilesStore.getState>);
     render(<CompileControls />);
-    expect(screen.getByTestId("tex-root-indicator")).toHaveTextContent(
-      copy.texRootName.replace("{{name}}", "main.tex"),
+    expect(await compileTooltip()).toHaveTextContent(
+      copy.texRootOverride.replace("{{path}}", "main.tex").replace("{{file}}", "chapter.tex"),
     );
   });
 
@@ -382,9 +413,7 @@ describe("CompileControls TeX root indicator", () => {
       ],
     } as unknown as ReturnType<typeof useFilesStore.getState>);
     render(<CompileControls />);
-    const user = userEvent.setup();
-    await user.hover(screen.getByTestId("tex-root-indicator"));
-    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+    expect(await compileTooltip()).toHaveTextContent(
       copy.texRootDocument.replace("{{path}}", "response.tex"),
     );
   });
@@ -406,12 +435,7 @@ describe("CompileControls TeX root indicator", () => {
       },
     });
     render(<CompileControls />);
-    expect(screen.getByTestId("tex-root-indicator")).toHaveTextContent(
-      copy.texRootName.replace("{{name}}", "supplement.tex"),
-    );
-    const user = userEvent.setup();
-    await user.hover(screen.getByTestId("tex-root-indicator"));
-    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+    expect(await compileTooltip()).toHaveTextContent(
       copy.texRootInclude.replace("{{path}}", "supplement.tex").replace("{{file}}", "supplement/methods.tex"),
     );
   });
@@ -429,12 +453,12 @@ describe("CompileControls compile target", () => {
       ],
     } as unknown as ReturnType<typeof useFilesStore.getState>);
     render(<CompileControls />);
-    expect(screen.getByTestId("tex-root-indicator")).toBeInTheDocument();
     const user = await openOptions();
     expect(screen.getByTestId("compile-target-open")).toHaveAttribute("aria-checked", "true");
     await user.click(screen.getByTestId("compile-target-main"));
     expect(useCompileRootStore.getState().followOpenFile).toBe(false);
-    await waitFor(() => expect(screen.queryByTestId("tex-root-indicator")).not.toBeInTheDocument());
+    await user.keyboard("{Escape}");
+    expect(await compileTooltip()).not.toHaveTextContent("response.tex");
   });
 
   it("is offered in every format, with a way to change the main document", async () => {
@@ -459,11 +483,7 @@ describe("CompileControls compile target", () => {
       ],
     } as unknown as ReturnType<typeof useFilesStore.getState>);
     render(<CompileControls />);
-    expect(screen.getByTestId("tex-root-indicator")).toHaveTextContent(
-      copy.texRootName.replace("{{name}}", "meeting.md"),
-    );
-    await userEvent.setup().hover(screen.getByTestId("tex-root-indicator"));
-    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+    expect(await compileTooltip()).toHaveTextContent(
       copy.texRootFormat.replace("{{path}}", "notes/meeting.md").replace("{{format}}", "Markdown"),
     );
   });

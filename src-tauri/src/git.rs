@@ -301,7 +301,8 @@ fn note_missing_git(program: &OsStr) {
 /// `/usr/bin/git` placeholder only offers to install Apple's developer tools,
 /// so it counts as missing, and is never started, until they are installed.
 fn probe_git(program: &OsStr, developer_tools_installed: impl FnOnce() -> bool) -> bool {
-    if resolve_program(program).is_some_and(|path| is_developer_tools_placeholder(&path))
+    if resolve_program(program)
+        .is_some_and(|path| crate::program_locator::is_developer_tools_placeholder(&path))
         && !developer_tools_installed()
     {
         return false;
@@ -326,29 +327,8 @@ fn resolve_program(program: &OsStr) -> Option<PathBuf> {
         .find(|candidate| candidate.is_file())
 }
 
-fn is_developer_tools_placeholder(program: &Path) -> bool {
-    cfg!(target_os = "macos") && program == Path::new("/usr/bin/git")
-}
-
-/// Whether Apple's developer tools are installed, so the `/usr/bin/git`
-/// placeholder runs the real Git instead of asking to install them.
 fn developer_tools_installed() -> bool {
-    let mut command = Command::new("/usr/bin/xcode-select");
-    command
-        .no_console()
-        .arg("-p")
-        .current_dir(std::env::temp_dir());
-    let Ok(output) =
-        crate::proc::output_contained_with_bounds(command, OutputBounds::total(GIT_PROBE_DEADLINE))
-    else {
-        return false;
-    };
-    output.status.success()
-        && Path::new(String::from_utf8_lossy(&output.stdout).trim())
-            .join("usr")
-            .join("bin")
-            .join("git")
-            .is_file()
+    crate::program_locator::developer_tools_provide(Path::new("/usr/bin/git"))
 }
 
 #[cfg(test)]
@@ -4354,18 +4334,23 @@ mod tests {
     }
 
     #[test]
-    fn only_the_macos_placeholder_git_needs_the_developer_tools() {
-        let placeholder = Path::new("/usr/bin/git");
-        assert_eq!(
-            super::is_developer_tools_placeholder(placeholder),
-            cfg!(target_os = "macos")
-        );
-        assert!(!super::is_developer_tools_placeholder(Path::new(
-            "/opt/homebrew/bin/git"
-        )));
-        assert!(!super::is_developer_tools_placeholder(Path::new(
-            "/usr/local/bin/git"
-        )));
+    fn only_the_macos_placeholders_need_the_developer_tools() {
+        use crate::program_locator::is_developer_tools_placeholder;
+        for placeholder in ["/usr/bin/git", "/usr/bin/python3"] {
+            assert_eq!(
+                is_developer_tools_placeholder(Path::new(placeholder)),
+                cfg!(target_os = "macos"),
+                "{placeholder}"
+            );
+        }
+        for real in [
+            "/opt/homebrew/bin/git",
+            "/usr/local/bin/git",
+            "/usr/local/bin/python3",
+            "/usr/bin/perl",
+        ] {
+            assert!(!is_developer_tools_placeholder(Path::new(real)), "{real}");
+        }
     }
 
     #[cfg(target_os = "macos")]

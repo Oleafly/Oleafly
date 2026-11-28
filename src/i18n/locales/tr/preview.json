@@ -102,9 +102,15 @@
     "useTypst": "Typst {{version}} kullan",
     "installTool": "{{tool}} {{version}} sürümünü kur",
     "installToolSize": "{{tool}} {{version}} sürümünü kur ({{size}})",
+    "installPackage": "{{name}} kur",
+    "checkAgain": "Yeniden denetle",
     "engineSettings": "Motor ayarlarını aç",
     "useTectonic": "Tectonic kullan",
-    "useTectonicForEveryone": "Herkes için Tectonic kullan"
+    "useTectonicForEveryone": "Herkes için Tectonic kullan",
+    "saveHtml": "HTML'yi projeye kaydet",
+    "downloadPageAsPdf": "Görüntülenen sayfayı PDF olarak indir",
+    "copyPath": "Çıktı yolunu kopyala",
+    "invertPage": "Web sayfası renklerini tersine çevir"
   },
   "html": {
     "building": "Web sayfası derleniyor",
@@ -132,10 +138,14 @@
     "namePlaceholder": "belge.pdf",
     "imageSaved": "Görsel projeye kaydedildi.",
     "pdfSaved": "PDF projeye kaydedildi.",
-    "failed": "Projeye kaydedilemedi."
+    "failed": "Projeye kaydedilemedi.",
+    "htmlDescription": "Görüntülenen web sayfasını proje ağacına tek bir HTML dosyası olarak kaydeder.",
+    "htmlPlaceholder": "belge.html",
+    "htmlSaved": "Web sayfası projeye kaydedildi."
   },
   "sync": {
     "toggle": "Derlemede PDF'yi eşitle",
+    "toggleHtml": "Derlemede HTML'yi eşitle",
     "failed": "{{name}} güncellenemedi. Oleafly bir sonraki derlemede yeniden deneyecek.",
     "fastMode": "Hızlı derlemeler bu PDF'yi güncellemez.",
     "localOnly": "Bu kopya bu bilgisayarda kalır."
@@ -153,7 +163,8 @@
   },
   "empty": {
     "compileUnavailable": "PDF derlemesi şu anda kullanılamıyor.",
-    "compileFailed": "Derleme başarısız oldu. Neyin ters gittiğini görmek için Günlükler sekmesini açın."
+    "compileFailed": "Derleme başarısız oldu. Neyin ters gittiğini görmek için Günlükler sekmesini açın.",
+    "notCompiled": "{{name}} henüz derlenmedi."
   },
   "a11y": {
     "stale": "Eski, güncel olmayan PDF. {{explanation}}",

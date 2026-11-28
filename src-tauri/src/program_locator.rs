@@ -237,6 +237,44 @@ pub(crate) fn start_background_probe() {
     spawn_login_probe();
 }
 
+const DEVELOPER_TOOL_SHIMS: [&str; 3] = ["git", "python3", "pip3"];
+const DEVELOPER_TOOLS_DEADLINE: Duration = Duration::from_secs(10);
+
+pub(crate) fn is_developer_tools_placeholder(program: &Path) -> bool {
+    cfg!(target_os = "macos")
+        && program.parent() == Some(Path::new("/usr/bin"))
+        && program
+            .file_name()
+            .is_some_and(|name| DEVELOPER_TOOL_SHIMS.iter().any(|shim| name == *shim))
+}
+
+pub(crate) fn developer_tools_provide(program: &Path) -> bool {
+    use crate::proc::NoConsole as _;
+
+    let Some(name) = program.file_name() else {
+        return false;
+    };
+    let mut command = std::process::Command::new("/usr/bin/xcode-select");
+    command
+        .no_console()
+        .arg("-p")
+        .current_dir(std::env::temp_dir());
+    crate::proc::output_contained_with_timeout(command, DEVELOPER_TOOLS_DEADLINE).is_ok_and(
+        |output| {
+            output.status.success()
+                && Path::new(String::from_utf8_lossy(&output.stdout).trim())
+                    .join("usr")
+                    .join("bin")
+                    .join(name)
+                    .is_file()
+        },
+    )
+}
+
+pub(crate) fn runnable(program: &Path) -> bool {
+    !is_developer_tools_placeholder(program) || developer_tools_provide(program)
+}
+
 pub(crate) fn refresh() {
     clear_caches();
     #[cfg(unix)]

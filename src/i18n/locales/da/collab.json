@@ -564,7 +564,6 @@
     "uploading": "Uploader figurer og andre filer: {{done}} af {{total}}",
     "saving": "Gemmer projektet på serveren…",
     "failed": "Delingen blev ikke færdig, så intet blev delt.",
-    "trustAgain": "Alle, du tilføjer til projektet, kan ændre dets filer, så Oleafly beder dig stole på det igen på denne computer, før det kører agenter, terminalkommandoer eller shell escape for det.",
     "projectNotesShared": "Projektets noter deles med alle i dette projekt. Personlige noter forbliver private.",
     "personalNotesPrivate": "Personlige noter forbliver private. Kun noter i projektets notemappe deles.",
     "unlinkOverleaf": "Fjern forbindelsen til Overleaf",

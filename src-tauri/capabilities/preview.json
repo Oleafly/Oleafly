@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "preview",
-  "description": "The detached PDF preview window: its own window controls, opening links, and opening the presentation windows.",
+  "description": "The detached PDF preview window: its own window controls, opening links, copying the output path, and opening the presentation windows.",
   "windows": ["preview"],
   "permissions": [
     "core:default",
@@ -21,6 +21,7 @@
     "core:window:allow-center",
     "core:window:allow-start-dragging",
     "shell:allow-open",
+    "clipboard-manager:allow-write-text",
     "os:default"
   ]
 }

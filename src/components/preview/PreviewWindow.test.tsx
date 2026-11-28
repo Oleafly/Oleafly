@@ -13,8 +13,15 @@ const mocks = vi.hoisted(() => ({
   logError: vi.fn(),
   openCompiledHtml: vi.fn(async (_projectId: string) => {}),
   compiledHtmlPreviewUrl: vi.fn(async (_projectId: string) => "http://127.0.0.1:4321/0123abcd/report.html"),
+  copyOutputPath: vi.fn(async (_projectId: string, _mainDocument: string, _page: boolean) => {}),
+  saveWebPage: vi.fn(async (_projectId: string, _mainDocument: string, _name: string) => {}),
 }));
 
+vi.mock("./web-page-output", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  copyOutputPath: mocks.copyOutputPath,
+  saveWebPage: mocks.saveWebPage,
+}));
 vi.mock("@tauri-apps/api/core", () => ({ isTauri: () => mocks.native }));
 vi.mock("@tauri-apps/api/window", () => ({ getCurrentWindow: () => ({
   title: async () => "Preview: Paper", setTitle: vi.fn(async () => {}),
@@ -596,6 +603,44 @@ describe("detached preview of a notebook", () => {
     noMainDocument: false, systemTexLocked: false,
     htmlOutput: { projectId: "alpha", mainDocument: "report.qmd", path: "/alpha/.oleafly/build/report.html", builtAt: Date.UTC(2026, 9, 24, 9) },
   };
+
+  it("exports, copies and saves the page it shows from its own toolbar", async () => {
+    mocks.native = true;
+    render(<PreviewWindow />);
+    await vi.waitFor(() => expect(mocks.listeners.has("preview:workspace")).toBe(true));
+    act(() => mocks.listeners.get("preview:workspace")?.({ payload: { ...quartoWorkspace, pageSavable: true } }));
+    await screen.findByTitle("report.html");
+    const user = userEvent.setup();
+    expect(screen.queryByRole("button", { name: enPreview.zoom.in })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: enPreview.actions.downloadPageAsPdf }));
+    expect(emitTo).toHaveBeenCalledWith("main", "preview:command", {
+      projectId: "alpha",
+      action: "export-page-pdf",
+      mainDocument: "report.qmd",
+    });
+    await user.click(screen.getByRole("button", { name: enPreview.actions.copyPath }));
+    expect(mocks.copyOutputPath).toHaveBeenCalledExactlyOnceWith("alpha", "report.qmd", true);
+
+    await user.click(screen.getByRole("button", { name: enPreview.actions.saveHtml }));
+    const saveMenuItem = await screen.findByRole("menuitem", { name: enPreview.actions.saveHtml });
+    await user.click(saveMenuItem);
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByRole("textbox")).toHaveValue("document.html");
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+    await vi.waitFor(() =>
+      expect(mocks.saveWebPage).toHaveBeenCalledExactlyOnceWith("alpha", "report.qmd", "document.html"),
+    );
+  });
+
+  it("hides the single-file save for a page of a Quarto website", async () => {
+    mocks.native = true;
+    render(<PreviewWindow />);
+    await vi.waitFor(() => expect(mocks.listeners.has("preview:workspace")).toBe(true));
+    act(() => mocks.listeners.get("preview:workspace")?.({ payload: { ...quartoWorkspace, pageSavable: false } }));
+    await screen.findByTitle("report.html");
+    expect(screen.queryByRole("button", { name: enPreview.actions.saveHtml })).not.toBeInTheDocument();
+  });
 
   it("shows the built page, opens it in the browser and sends the code choice to the main window", async () => {
     mocks.native = true;

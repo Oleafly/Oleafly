@@ -2,6 +2,28 @@ import { i18n } from "@/i18n";
 import { AppError, codedErrorText, describeError } from "@/lib/app-error";
 import type { CompileError, TexBlocker } from "@/lib/tauri";
 
+const CODE_NEEDED_REASONS = [
+  "extensions",
+  "environment",
+  "shortcode",
+  "filter",
+  "pdf_engine",
+  "outside",
+  "unchecked",
+] as const;
+
+type CodeNeededReason = (typeof CODE_NEEDED_REASONS)[number];
+
+function isCodeNeededReason(reason: string | undefined): reason is CodeNeededReason {
+  return CODE_NEEDED_REASONS.some((known) => known === reason);
+}
+
+export function codeNeededText(reason: string | undefined): string {
+  return isCodeNeededReason(reason)
+    ? i18n.t(($) => $.shell.codeExecution.reasons[reason])
+    : i18n.t(($) => $.shell.codeExecution.needed);
+}
+
 function shellEscapeParams() {
   return { setting: i18n.t(($) => $.shell.shellCommands.allow) };
 }
@@ -69,11 +91,19 @@ const EXPLANATIONS: Readonly<Record<string, Explain>> = {
     i18n.t(($) => $.errors.tex.shell_escape_denied_pythontex, shellEscapeParams()),
   "tex.shell_escape_denied_command": () =>
     i18n.t(($) => $.errors.tex.shell_escape_denied_command, shellEscapeParams()),
-  "notebook.code_needed": () => i18n.t(($) => $.shell.codeExecution.needed),
+  "notebook.code_needed": (params) => codeNeededText(params.reason),
   "notebook.code_skipped": () => i18n.t(($) => $.shell.codeExecution.skipped),
   "notebook.stored_results": () => i18n.t(($) => $.shell.codeExecution.storedResults),
   "notebook.quarto_needs_tex": () => i18n.t(($) => $.errors.notebook.quarto_needs_tex),
-  "notebook.r_package_missing": () => i18n.t(($) => $.errors.notebook.r_package_missing),
+  "notebook.r_package_missing": (params) =>
+    params.package
+      ? i18n.t(($) => $.errors.notebook.r_package_named, { package: params.package })
+      : i18n.t(($) => $.errors.notebook.r_package_missing),
+  "notebook.python_module_missing": (params) =>
+    i18n.t(($) => $.errors.notebook.python_module_missing, {
+      module: params.module ?? "",
+      package: params.package ?? params.module ?? "",
+    }),
   "notebook.r_missing": () => i18n.t(($) => $.errors.notebook.r_missing),
   "notebook.python_missing": () => i18n.t(($) => $.errors.notebook.python_missing),
   "notebook.jupyter_missing": (params) =>
@@ -82,6 +112,8 @@ const EXPLANATIONS: Readonly<Record<string, Explain>> = {
       : i18n.t(($) => $.errors.notebook.jupyter_missing),
   "notebook.chrome_missing": () => i18n.t(($) => $.errors.notebook.chrome_missing),
   "notebook.julia_not_run": () => i18n.t(($) => $.errors.notebook.julia_not_run),
+  "notebook.format_not_shown": (params) =>
+    i18n.t(($) => $.errors.notebook.format_not_shown, { formats: params.formats ?? "" }),
   "notebook.quarto_no_input": () => i18n.t(($) => $.errors.notebook.quarto_no_input),
   "notebook.not_project_input": () => i18n.t(($) => $.errors.notebook.not_project_input),
   "notebook.missing_glyphs": (params) =>

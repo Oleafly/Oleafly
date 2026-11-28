@@ -2,7 +2,7 @@ use super::SourceFamily;
 use crate::front_matter::yaml_uses_aliases;
 use serde_norway::Value;
 
-pub(super) const PROJECT_FILES: [&str; 2] = ["_quarto.yml", "_quarto.yaml"];
+pub const PROJECT_FILES: [&str; 2] = ["_quarto.yml", "_quarto.yaml"];
 const INDEX: &str = "index.qmd";
 
 #[derive(Debug)]

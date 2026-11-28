@@ -63,7 +63,7 @@ vi.mock("@/store/typst-variant", () => ({
   useTypstVariantStore: { subscribe: () => () => {} },
 }));
 vi.mock("@/lib/tex-root", () => ({
-  resolveEffectiveMainDoc: () => ({ mainDoc: (filesStore.current as StoreApi<FakeFiles>).getState().mainDoc }),
+  resolveCompileTarget: () => ({ mainDoc: (filesStore.current as StoreApi<FakeFiles>).getState().mainDoc, format: null }),
 }));
 vi.mock("@/lib/main-document", () => ({ mainDocumentMissing: () => false }));
 vi.mock("@/lib/document-engine", () => ({

@@ -26,13 +26,29 @@ const COPY = {
   nemo: "nemo",
   nautilus: "nautilus",
   folder_open_with: "folderOpenWith",
+  default_latex: "defaultLatex",
+  default_typst: "defaultTypst",
+  default_markdown: "defaultMarkdown",
+  default_quarto: "defaultQuarto",
 } as const satisfies Record<SystemIntegrationItemId, string>;
+
+const DEFAULT_APP_ITEMS: ReadonlySet<SystemIntegrationItemId> = new Set([
+  "default_latex",
+  "default_typst",
+  "default_markdown",
+  "default_quarto",
+]);
+
+function isDefaultAppItem(item: SystemIntegrationItem): boolean {
+  return DEFAULT_APP_ITEMS.has(item.id);
+}
 
 const ATTENTION = {
   outdated: "outdated",
   elsewhere: "elsewhere",
   moved: "moved",
   no_default_file_manager: "noDefaultFileManager",
+  no_file_type: "noFileType",
 } as const satisfies Record<SystemIntegrationAttention, string>;
 
 const STATE = {
@@ -61,11 +77,16 @@ function repairsOnItsOwn(item: SystemIntegrationItem): boolean {
 const ACTION =
   "inline-flex shrink-0 items-center gap-1.5 rounded-md border border-input px-2.5 py-1.5 text-xs transition-colors hover:bg-accent focus-visible:bg-accent disabled:opacity-50";
 
-function StateBadge({ state }: Readonly<{ state: SystemIntegrationState }>) {
+function StateBadge({
+  state,
+  defaultApp,
+}: Readonly<{ state: SystemIntegrationState; defaultApp: boolean }>) {
   const { t } = useTranslation(["settings"]);
   return (
     <Badge variant={STATE_TONE[state]} size="sm">
-      {t(($) => $.settings.systemIntegration.state[STATE[state]])}
+      {defaultApp
+        ? t(($) => $.settings.systemIntegration.defaultAppState[STATE[state]])
+        : t(($) => $.settings.systemIntegration.state[STATE[state]])}
     </Badge>
   );
 }
@@ -84,17 +105,58 @@ function ActionButton({
   );
 }
 
-function RowControls({
+function DefaultAppControls({
   item,
+  platform,
   busy,
   onChange,
 }: Readonly<{
   item: SystemIntegrationItem;
+  platform: SystemIntegrationStatus["platform"];
+  busy: Change | null;
+  onChange: (change: Change) => void;
+}>) {
+  const { t } = useTranslation(["common", "settings"]);
+  const working = busy !== null;
+  if (item.state === "not_installed") {
+    return (
+      <ActionButton
+        busy={busy === "install"}
+        disabled={working}
+        label={t(($) => $.settings.systemIntegration.actions.makeDefault)}
+        onClick={() => onChange("install")}
+      />
+    );
+  }
+  if (item.state === "installed" && platform === "linux") {
+    return (
+      <ActionButton
+        busy={busy === "remove"}
+        disabled={working}
+        label={t(($) => $.settings.systemIntegration.actions.stopDefault)}
+        onClick={() => onChange("remove")}
+      />
+    );
+  }
+  return null;
+}
+
+function RowControls({
+  item,
+  platform,
+  busy,
+  onChange,
+}: Readonly<{
+  item: SystemIntegrationItem;
+  platform: SystemIntegrationStatus["platform"];
   busy: Change | null;
   onChange: (change: Change) => void;
 }>) {
   const { t } = useTranslation(["common", "settings"]);
   if (item.packaged) return null;
+  if (isDefaultAppItem(item)) {
+    return <DefaultAppControls item={item} platform={platform} busy={busy} onChange={onChange} />;
+  }
   const working = busy !== null;
   const repair =
     item.state === "needs_attention" && item.attention !== "no_default_file_manager" ? (
@@ -169,24 +231,29 @@ function QuickActionsMenuHint({ title }: Readonly<{ title: string | null }>) {
 
 function IntegrationRow({
   item,
+  platform,
   busy,
   failure,
+  awaitingConfirmation,
   onChange,
 }: Readonly<{
   item: SystemIntegrationItem;
+  platform: SystemIntegrationStatus["platform"];
   busy: Change | null;
   failure: Change | null;
+  awaitingConfirmation: boolean;
   onChange: (change: Change) => void;
 }>) {
   const { t } = useTranslation(["settings"]);
   const copy = COPY[item.id];
   const attention = item.attention;
+  const defaultApp = isDefaultAppItem(item);
   return (
     <SettingsRow
       testId={`system-integration-${item.id}`}
       aria-busy={busy !== null}
       label={t(($) => $.settings.systemIntegration[copy].label)}
-      adornment={<StateBadge state={item.state} />}
+      adornment={<StateBadge state={item.state} defaultApp={defaultApp} />}
       description={t(($) => $.settings.systemIntegration[copy].description)}
       details={
         <>
@@ -201,16 +268,25 @@ function IntegrationRow({
               {t(($) => $.settings.systemIntegration.attention[ATTENTION[attention]])}
             </p>
           ) : null}
+          {awaitingConfirmation && item.state !== "installed" ? (
+            <p className="text-xs text-muted-foreground">
+              {platform === "windows"
+                ? t(($) => $.settings.systemIntegration.defaultAppConfirm.windows)
+                : t(($) => $.settings.systemIntegration.defaultAppConfirm.macos)}
+            </p>
+          ) : null}
           {failure ? (
             <p role="alert" className="text-xs text-destructive">
-              {failure === "install"
-                ? t(($) => $.settings.systemIntegration.failed.install)
-                : t(($) => $.settings.systemIntegration.failed.remove)}
+              {defaultApp
+                ? t(($) => $.settings.systemIntegration.failed.defaultApp)
+                : failure === "install"
+                  ? t(($) => $.settings.systemIntegration.failed.install)
+                  : t(($) => $.settings.systemIntegration.failed.remove)}
             </p>
           ) : null}
         </>
       }
-      control={<RowControls item={item} busy={busy} onChange={onChange} />}
+      control={<RowControls item={item} platform={platform} busy={busy} onChange={onChange} />}
     />
   );
 }
@@ -236,6 +312,7 @@ export function SystemIntegrationSection({
   const [loadFailed, setLoadFailed] = useState(false);
   const [busy, setBusy] = useState<Partial<Record<SystemIntegrationItemId, Change>>>({});
   const [failures, setFailures] = useState<Partial<Record<SystemIntegrationItemId, Change>>>({});
+  const [awaiting, setAwaiting] = useState<ReadonlySet<SystemIntegrationItemId>>(new Set());
   const revision = useRef(0);
   const mounted = useRef(false);
   const loaded = useRef(false);
@@ -266,9 +343,10 @@ export function SystemIntegrationSection({
   }, [load]);
 
   const awaitingQuickActions = status?.items.some(showsQuickActionsHint) ?? false;
+  const awaitingDefaults = awaiting.size > 0;
 
   useLayoutEffect(() => {
-    if (!awaitingQuickActions) return;
+    if (!awaitingQuickActions && !awaitingDefaults) return;
     const onFocus = () => void load();
     const onVisible = () => {
       if (document.visibilityState === "visible") onFocus();
@@ -279,7 +357,7 @@ export function SystemIntegrationSection({
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [awaitingQuickActions, load]);
+  }, [awaitingQuickActions, awaitingDefaults, load]);
 
   const change = useCallback(async (id: SystemIntegrationItemId, next: Change, quiet = false) => {
     revision.current += 1;
@@ -288,6 +366,9 @@ export function SystemIntegrationSection({
     try {
       const item: unknown = await setSystemIntegration(id, next === "install");
       if (!isSystemIntegrationItem(item, id)) throw new Error("unexpected file manager integration item");
+      if (DEFAULT_APP_ITEMS.has(id) && next === "install" && item.state !== "installed") {
+        setAwaiting((current) => new Set(current).add(id));
+      }
       setStatus((current) =>
         current
           ? {
@@ -348,8 +429,10 @@ export function SystemIntegrationSection({
         <IntegrationRow
           key={item.id}
           item={item}
+          platform={status.platform}
           busy={busy[item.id] ?? null}
           failure={failures[item.id] ?? null}
+          awaitingConfirmation={awaiting.has(item.id)}
           onChange={(next) => void change(item.id, next)}
         />
       ))}

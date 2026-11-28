@@ -6,4 +6,15 @@
     <glob pattern="*.typ"/>
     <alias type="text/x-typst"/>
   </mime-type>
+  <mime-type type="text/x-quarto">
+    <comment>Quarto document</comment>
+    <sub-class-of type="text/markdown"/>
+    <glob pattern="*.qmd"/>
+  </mime-type>
+  <mime-type type="text/x-r-markdown">
+    <comment>R Markdown document</comment>
+    <sub-class-of type="text/markdown"/>
+    <glob pattern="*.Rmd" case-sensitive="true"/>
+    <glob pattern="*.rmd"/>
+  </mime-type>
 </mime-info>

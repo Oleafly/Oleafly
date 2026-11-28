@@ -5,7 +5,9 @@
     "mirrors.oleafly.com",
     "github.com",
     "release-assets.githubusercontent.com",
-    "objects.githubusercontent.com"
+    "objects.githubusercontent.com",
+    "cloud.r-project.org",
+    "www.python.org"
   ],
   "tools": {
     "quarto": {
@@ -100,6 +102,65 @@
           "archiveSize": 16635534,
           "executables": ["calepin.exe", "calepin-x86_64-pc-windows-msvc/calepin.exe"],
           "url": "https://github.com/vincentarelbundock/calepin/releases/download/v0.0.61/calepin-x86_64-pc-windows-msvc.zip"
+        }
+      }
+    }
+  },
+  "installers": {
+    "r": {
+      "version": "4.6.2",
+      "license": "GPL-2.0-or-later",
+      "homepage": "https://cloud.r-project.org/",
+      "targets": {
+        "aarch64-apple-darwin": {
+          "fileName": "R-4.6.2-arm64.pkg",
+          "sha256": "a678b4db1fcd71b1b1cc58edcfa4a8d36ee012a02659dde9eab9366e93571157",
+          "size": 104731180,
+          "url": "https://cloud.r-project.org/bin/macosx/sonoma-arm64/base/R-4.6.2-arm64.pkg"
+        },
+        "x86_64-apple-darwin": {
+          "fileName": "R-4.6.2-x86_64.pkg",
+          "sha256": "aa9b1dba09cc69710571ad93efba26a9bcb5a0098543dadc4bb8e419a423195e",
+          "size": 107915374,
+          "url": "https://cloud.r-project.org/bin/macosx/big-sur-x86_64/base/R-4.6.2-x86_64.pkg"
+        },
+        "x86_64-pc-windows-msvc": {
+          "fileName": "R-4.6.2-win.exe",
+          "sha256": "b0b0053baa1963b6d8a28c9642d50107ef9ce2f41c8b9a90e952846c8918b38a",
+          "size": 91363600,
+          "url": "https://cloud.r-project.org/bin/windows/base/R-4.6.2-win.exe",
+          "fallbackUrl": "https://cloud.r-project.org/bin/windows/base/old/4.6.2/R-4.6.2-win.exe"
+        }
+      }
+    },
+    "python": {
+      "version": "3.14.10",
+      "license": "PSF-2.0",
+      "homepage": "https://www.python.org/downloads/",
+      "targets": {
+        "aarch64-apple-darwin": {
+          "fileName": "python-3.14.10-macos11.pkg",
+          "sha256": "286c7018aa2730f6747ca433dccdc2b31be45f078a9ea0ffa44d5f06368fd2d7",
+          "size": 76018440,
+          "url": "https://www.python.org/ftp/python/3.14.10/python-3.14.10-macos11.pkg"
+        },
+        "x86_64-apple-darwin": {
+          "fileName": "python-3.14.10-macos11.pkg",
+          "sha256": "286c7018aa2730f6747ca433dccdc2b31be45f078a9ea0ffa44d5f06368fd2d7",
+          "size": 76018440,
+          "url": "https://www.python.org/ftp/python/3.14.10/python-3.14.10-macos11.pkg"
+        },
+        "x86_64-pc-windows-msvc": {
+          "fileName": "python-3.14.10-amd64.exe",
+          "sha256": "92480239264744fe0386a1bd8275786fefa126e3129e56a68e22b52c73329965",
+          "size": 33498520,
+          "url": "https://www.python.org/ftp/python/3.14.10/python-3.14.10-amd64.exe"
+        },
+        "aarch64-pc-windows-msvc": {
+          "fileName": "python-3.14.10-arm64.exe",
+          "sha256": "5b9547e4edae2f6fb2fbfec5e26cf91b4ea191e3b07f7727d5a2c5c2cca93ed3",
+          "size": 32777016,
+          "url": "https://www.python.org/ftp/python/3.14.10/python-3.14.10-arm64.exe"
         }
       }
     }

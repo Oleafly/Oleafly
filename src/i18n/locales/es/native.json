@@ -58,7 +58,7 @@
     },
     "trustFolder": {
       "title": "¿Confiar en esta carpeta?",
-      "message": "Oleafly activará Git, el terminal, los agentes y las herramientas de LaTeX para {{name}}. Confía solo en carpetas cuyo contenido conozcas.",
+      "message": "Oleafly activará Git, el terminal, los agentes, latexmk y Quarto para {{name}}. El código de la carpeta solo se ejecuta cuando lo permitas. Confía solo en carpetas cuyo contenido conozcas.",
       "messageParent": "Oleafly confiará en {{name}} y en todas las carpetas que contiene, incluidas las que abras más adelante.",
       "messageRepository": "Oleafly ejecutará Git en {{name}} con la configuración y los hooks propios del repositorio.",
       "confirm": "Confiar"

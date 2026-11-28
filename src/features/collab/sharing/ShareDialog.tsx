@@ -332,7 +332,6 @@ export function ShareDialog({ projectId }: Readonly<{ projectId: string }>) {
   const serversStatus = useCollabStore((state) => state.status);
   const loadServers = useCollabStore((state) => state.load);
   const [share, setShare] = useState<CollabShareInfo | null | undefined>(undefined);
-  const [justShared, setJustShared] = useState(false);
   const [shareError, setShareError] = useState<string | null>(null);
   const [shareRequest, setShareRequest] = useState(0);
   const [addingOleafly, setAddingOleafly] = useState(false);
@@ -378,14 +377,7 @@ export function ShareDialog({ projectId }: Readonly<{ projectId: string }>) {
     if (share === undefined) return <LoadingState size="compact" label={t(($) => $.collab.share.loading)} />;
     if (share) {
       return (
-        <>
-          {justShared ? (
-            <p className="rounded-md bg-primary/5 px-3 py-2 text-xs text-foreground" data-testid="collab-share-trust">
-              {t(($) => $.collab.share.trustAgain)}
-            </p>
-          ) : null}
-          <ManageSharing projectId={projectId} name={name} share={share} />
-        </>
+        <ManageSharing projectId={projectId} name={name} share={share} />
       );
     }
     if (overleafLinked) {
@@ -401,10 +393,7 @@ export function ShareDialog({ projectId }: Readonly<{ projectId: string }>) {
         projectId={projectId}
         servers={signedIn}
         fromCopy={fromCopy}
-        onShared={(shared) => {
-          setJustShared(true);
-          setShare(shared);
-        }}
+        onShared={setShare}
       />
     );
   };

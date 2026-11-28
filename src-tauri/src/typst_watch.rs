@@ -1334,7 +1334,11 @@ pub async fn typst_watch_compile(
             &target.main_document,
             &target.toolchain_identity,
             pdf_plan.and_then(|plan| {
-                plan.compiled(record.result.has_pdf, record.result.output_id.as_deref())
+                plan.compiled(
+                    record.result.has_pdf,
+                    record.result.output_id.as_deref(),
+                    None,
+                )
             }),
         );
     }

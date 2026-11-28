@@ -21,12 +21,14 @@ export function HtmlOutputPanel({
   builtAt,
   compiling = false,
   onCompile,
+  inverted = false,
 }: Readonly<{
   projectId: string;
   mainDocument?: string;
   builtAt: number | null;
   compiling?: boolean;
   onCompile?: () => void;
+  inverted?: boolean;
 }>) {
   const { t } = useTranslation(["preview"]);
   const [frame, setFrame] = useState<Frame | null>(null);
@@ -50,7 +52,7 @@ export function HtmlOutputPanel({
   if (shown && "url" in shown) {
     return (
       <div className="h-full" data-testid="html-output-panel">
-        <PreviewFrame src={`${shown.url}?v=${shown.builtAt}`} title={pageName(shown.url)} />
+        <PreviewFrame src={`${shown.url}?v=${shown.builtAt}`} title={pageName(shown.url)} inverted={inverted} />
       </div>
     );
   }

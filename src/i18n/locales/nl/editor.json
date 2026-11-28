@@ -328,7 +328,15 @@
     "notChecked": "Niet gecontroleerd",
     "dictionaryMissing": "{{name}} is niet gedownload, dus de spelling wordt niet gecontroleerd. Download het in Instellingen of kies een andere taal.",
     "grammarEnglishOnly": "Grammaticacontrole werkt alleen voor Engelse documenten.",
-    "spellLanguageNotDownloaded": "{{name}} (niet gedownload)"
+    "spellLanguageNotDownloaded": "{{name}} (niet gedownload)",
+    "code": {
+      "title": "Code on this computer",
+      "run": "Run this project's code when compiling",
+      "hint": "R, Python and Julia chunks and LaTeX shell commands run with your permissions. Oleafly keeps this choice until you turn it off here.",
+      "restrictedHint": "Trust this folder first. Code never runs in a folder you haven't trusted.",
+      "trust": "Trust this folder",
+      "stopTrusting": "Stop trusting this folder"
+    }
   },
   "table": {
     "trigger": "Tabel invoegen",

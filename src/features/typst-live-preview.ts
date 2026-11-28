@@ -5,7 +5,7 @@ import { describeError, errorText } from "@/lib/app-error";
 import { compileOfflineForEngine } from "@/lib/document-engine";
 import { logError } from "@/lib/log";
 import { mainDocumentMissing } from "@/lib/main-document";
-import { resolveEffectiveMainDoc } from "@/lib/tex-root";
+import { resolveCompileTarget } from "@/lib/tex-root";
 import {
   applyTypstLiveResult,
   compileProjectRevision,
@@ -14,6 +14,7 @@ import {
   useCompileStore,
   type LivePreviewStatus,
 } from "@/store/compile";
+import { useCompileRootStore } from "@/store/compile-root";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { activeTypstVariant, useTypstVariantStore } from "@/store/typst-variant";
@@ -92,6 +93,7 @@ let cycleRevision: number | null = null;
 let interruptions = 0;
 let compilingProject: string | null = null;
 
+const TYPST_SOURCE = /\.typ$/i;
 const BUSY_STATUSES: ReadonlySet<LivePreviewStatus> = new Set(["starting", "compiling", "restarting"]);
 
 function desired(): Desired | null | "hold" {
@@ -102,7 +104,8 @@ function desired(): Desired | null | "hold" {
   if (!files.projectId || files.loading || !typstLivePreviewWanted(files) || mainDocumentMissing(files)) {
     return null;
   }
-  const mainDoc = resolveEffectiveMainDoc().mainDoc;
+  const target = resolveCompileTarget();
+  const mainDoc = target.format === null && TYPST_SOURCE.test(target.mainDoc) ? target.mainDoc : files.mainDoc;
   const offline = compileOfflineForEngine(files.engine, useSettingsStore.getState().offline).offline;
   const typstVariant = activeTypstVariant(files.projectId, files.engine);
   const key = JSON.stringify([
@@ -225,6 +228,9 @@ function install(): Promise<UnlistenFn[]> {
   const unsubscribers = [
     useFilesStore.subscribe(onFiles),
     useTypstVariantStore.subscribe(() => void syncLivePreview()),
+    useCompileRootStore.subscribe((state, previous) => {
+      if (state.parts !== previous.parts || state.followOpenFile !== previous.followOpenFile) void syncLivePreview();
+    }),
     useSettingsStore.subscribe((state, previous) => {
       if (state.offline !== previous.offline) void syncLivePreview();
     }),

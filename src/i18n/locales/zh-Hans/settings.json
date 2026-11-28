@@ -1058,6 +1058,13 @@
       "hoverPreview": {
         "description": "在库中将鼠标悬停在项目上时，显示最后编译的页面。",
         "label": "悬停时预览 PDF"
+      },
+      "html": {
+        "title": "网页预览",
+        "darkMode": {
+          "label": "网页深色模式",
+          "description": "适用于生成网页的 Quarto 文档。选择“跟随应用主题”后，应用为深色时网页也会变暗，图片保持原有颜色。点击预览工具栏中的反转颜色按钮，会把此项设为“开”或“关”。"
+        }
       }
     },
     "sectionName": "外观",
@@ -1767,7 +1774,17 @@
         "heading": "语言",
         "tooltip": "Quarto 和 Calepin 文档中的代码由这些程序运行。",
         "notFound": "未找到",
-        "note": "Oleafly 使用这台电脑上已有的 R、Python 和 Julia 运行代码，从不自行安装它们。"
+        "note": "Oleafly 使用这台电脑上的 R、Python 和 Julia 运行代码。它可以替你下载 R 和 Python 的官方安装程序，并安装 knitr、rmarkdown 和 Jupyter。",
+        "installerNote": "Oleafly 会下载官方安装程序，校验后打开。安装完成后，回到这里再检查一次。",
+        "finishInstaller": "完成 {{name}} 的安装，然后再检查一次。",
+        "checkAgain": "再次检查",
+        "packageManager": {
+          "r": "请用包管理器安装 R，例如 sudo apt install r-base 或 sudo dnf install R，然后再检查一次。",
+          "python": "请用包管理器安装 Python 3，例如 sudo apt install python3 python3-venv，然后再检查一次。"
+        },
+        "installYourself": "请从 {{name}} 官网安装，然后再检查一次。",
+        "packagesMissing": "未安装：{{packages}}",
+        "installPackages": "安装 {{packages}}"
       },
       "codeNote": "只有在编译菜单中为该项目允许代码后，文档中的代码才会运行。",
       "progress": {
@@ -1775,7 +1792,9 @@
         "downloading": "正在下载 {{percent}}%",
         "verifying": "正在校验",
         "extracting": "正在解压",
-        "done": "即将完成"
+        "done": "即将完成",
+        "opening": "正在打开安装程序",
+        "installing": "正在安装"
       },
       "error": {
         "load": "无法检查 Quarto、Calepin 和语言。",
@@ -2735,11 +2754,14 @@
     },
     "actions": {
       "install": "安装",
-      "repair": "修复"
+      "repair": "修复",
+      "makeDefault": "Make default",
+      "stopDefault": "Stop using Oleafly"
     },
     "failed": {
       "install": "无法安装，请重试。",
-      "remove": "无法移除，请重试。"
+      "remove": "无法移除，请重试。",
+      "defaultApp": "Oleafly couldn't become the default for these files. Try again, or pick Oleafly in your system settings."
     },
     "packaged": "已随 Oleafly 软件包安装。",
     "quickAction": {
@@ -2772,7 +2794,33 @@
       "outdated": "它已过期或被 macOS 阻止。修复后即可恢复。",
       "elsewhere": "菜单会打开另一份 Oleafly。修复后将使用当前这份。",
       "moved": "它指向一份已移动的 Oleafly。修复后将使用当前这份。",
-      "noDefaultFileManager": "系统没有为文件夹设置默认文件管理器，此条目可能会让所有文件夹都用 Oleafly 打开。请移除它。"
+      "noDefaultFileManager": "系统没有为文件夹设置默认文件管理器，此条目可能会让所有文件夹都用 Oleafly 打开。请移除它。",
+      "noFileType": "This Mac doesn't know this file type, so Oleafly can't set it from here. In Finder, choose Get Info › Open with › Oleafly › Change All."
+    },
+    "defaultLatex": {
+      "label": "LaTeX files (.tex)",
+      "description": "Double-click a .tex file to open it in Oleafly."
+    },
+    "defaultTypst": {
+      "label": "Typst files (.typ)",
+      "description": "Double-click a .typ file to open it in Oleafly."
+    },
+    "defaultMarkdown": {
+      "label": "Markdown files (.md)",
+      "description": "Double-click a .md or .markdown file to open it in Oleafly."
+    },
+    "defaultQuarto": {
+      "label": "Quarto and R Markdown files",
+      "description": "Double-click a .qmd or .Rmd file to open it in Oleafly."
+    },
+    "defaultAppState": {
+      "installed": "Default",
+      "notInstalled": "Not default",
+      "needsAttention": "Not available"
+    },
+    "defaultAppConfirm": {
+      "macos": "If macOS asks, choose Use Oleafly. This row updates when you come back.",
+      "windows": "Pick Oleafly for this file type in Windows Settings. This row updates when you come back."
     }
   },
   "research": {

@@ -26,6 +26,7 @@ import {
   Link,
   Link2,
   Pencil,
+  Play,
   RefreshCw,
   SquareArrowOutUpRight,
   SquareTerminal,
@@ -34,6 +35,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tooltip } from "@/components/ui/tooltip";
 import { useInitialFocus } from "@/components/ui/use-initial-focus";
 import { ModalShell } from "@/components/ui/modal-shell";
 import {
@@ -72,6 +74,7 @@ import { useGitStatusStore } from "@/store/git-status";
 import { NoMainDocumentHint } from "@/components/open-folder/NoMainDocumentHint";
 import { basename } from "@/lib/path-utils";
 import { ALL_MAIN_EXTENSIONS, mainDocumentMissing } from "@/lib/main-document";
+import { useCompileTarget } from "@/lib/tex-root";
 import { chooseMainDocument } from "@/store/main-document";
 import { LinkedFoldersSection } from "@/components/research/LinkedFoldersSection";
 import { TaskOutputsSection } from "@/components/research/TaskOutputsSection";
@@ -290,6 +293,7 @@ interface TreeCtx {
   expanded: Set<string>;
   toggle: (p: string) => void;
   mainDoc: string;
+  compileTarget: string | null;
   activePath: string | null;
   selected: string | null;
   onSelect: (path: string, isDir: boolean) => void;
@@ -344,6 +348,7 @@ export function FileTree({
   const tree = useFilesStore((s) => s.tree);
   const treeTruncated = useFilesStore((s) => s.treeTruncated);
   const mainDoc = useFilesStore((s) => s.mainDoc);
+  const compileTarget = useCompileTarget((target) => (target.overriddenBy === null ? null : target.mainDoc));
   const activePath = useFilesStore((s) => s.activePath);
   const openFile = useFilesStore((s) => s.openFile);
   const createFile = useFilesStore((s) => s.createFile);
@@ -883,6 +888,7 @@ export function FileTree({
     expanded,
     toggle,
     mainDoc,
+    compileTarget: compileTarget === mainDoc ? null : compileTarget,
     activePath,
     selected: selected?.path ?? null,
     onSelect: select,
@@ -1345,7 +1351,9 @@ function TreeRowIcon({
   node,
   expanded,
   isMain,
-}: Readonly<{ node: TreeNode; expanded: boolean; isMain: boolean }>) {
+  compiles,
+}: Readonly<{ node: TreeNode; expanded: boolean; isMain: boolean; compiles: boolean }>) {
+  const { t } = useTranslation(["workspace"]);
   const badges = useSettingsStore((state) => state.fileMarkers === "badges");
   if (node.unreadable) {
     return (
@@ -1376,6 +1384,22 @@ function TreeRowIcon({
     <>
       <span className="flex w-3.5 shrink-0 items-center justify-center">
         {isMain && <Star className="size-3 shrink-0 fill-foreground text-foreground" />}
+        {compiles && !isMain && (
+          <Tooltip label={t(($) => $.workspace.files.compileTarget)}>
+            <button
+              type="button"
+              data-testid="compile-target-marker"
+              aria-label={t(($) => $.workspace.files.compileTarget)}
+              onClick={(event) => {
+                event.stopPropagation();
+                void import("@/lib/compile-preview").then(({ recompileWithPreview }) => recompileWithPreview());
+              }}
+              className="flex size-3.5 shrink-0 items-center justify-center rounded-sm text-muted-foreground hover:bg-sidebar-accent-foreground/10 hover:text-foreground focus-visible:bg-sidebar-accent-foreground/10"
+            >
+              <Play aria-hidden className="size-3 fill-current" />
+            </button>
+          </Tooltip>
+        )}
       </span>
       {badges ? (
         <FileBadge name={node.path} />
@@ -1538,6 +1562,7 @@ function TreeRow({
   const isActive = ctx.activePath === node.path;
   const isSelected = ctx.selected === node.path;
   const isMain = ctx.mainDoc === node.path;
+  const compiles = ctx.compileTarget === node.path;
   const isRenaming = ctx.renamePath === node.path;
   const isDropTarget = ctx.dragOver === node.path && node.isDir;
   const unreadable = node.unreadable;
@@ -1572,6 +1597,7 @@ function TreeRow({
   };
 
   const onRowKeyDown = (e: ReactKeyboardEvent<HTMLDivElement>) => {
+    if ((e.key === "Enter" || e.key === " ") && e.target !== e.currentTarget) return;
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
       activate();
@@ -1636,7 +1662,7 @@ function TreeRow({
       onDragOver={onDragOver}
       onDrop={onDrop}
     >
-      <TreeRowIcon node={node} expanded={ctx.expanded.has(node.path)} isMain={isMain} />
+      <TreeRowIcon node={node} expanded={ctx.expanded.has(node.path)} isMain={isMain} compiles={compiles} />
       <span
         className={cn("truncate", unreadable && "text-muted-foreground")}
       >

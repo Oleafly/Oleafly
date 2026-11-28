@@ -1065,6 +1065,13 @@
       "hoverPreview": {
         "description": "Show the last compiled page when you hover over a project in the library.",
         "label": "Preview PDF on hover"
+      },
+      "html": {
+        "title": "Web page preview",
+        "darkMode": {
+          "label": "Web page dark mode",
+          "description": "For Quarto documents that build a web page. Match app theme darkens the page when the app is dark, and pictures keep their colors. The invert button in the preview toolbar switches this to On or Off."
+        }
       }
     },
     "sectionName": "Appearance",
@@ -1779,7 +1786,17 @@
         "heading": "Languages",
         "tooltip": "Code in Quarto and Calepin documents runs with these programs.",
         "notFound": "Not found",
-        "note": "Oleafly runs code with the R, Python and Julia already on this computer. It never installs them."
+        "note": "Oleafly runs code with the R, Python and Julia on this computer. It can download the official R and Python installers, and install knitr, rmarkdown and Jupyter for you.",
+        "installerNote": "Oleafly downloads the official installer, checks it and opens it. When the installer finishes, come back and check again.",
+        "finishInstaller": "Finish the {{name}} installer, then check again.",
+        "checkAgain": "Check again",
+        "packageManager": {
+          "r": "Install R with your package manager, for example sudo apt install r-base or sudo dnf install R. Then check again.",
+          "python": "Install Python 3 with your package manager, for example sudo apt install python3 python3-venv. Then check again."
+        },
+        "installYourself": "Install {{name}} from its website, then check again.",
+        "packagesMissing": "Not installed: {{packages}}",
+        "installPackages": "Install {{packages}}"
       },
       "codeNote": "Code in a document runs only after you allow code for that project in the Compile menu.",
       "progress": {
@@ -1787,7 +1804,9 @@
         "downloading": "Downloading {{percent}}%",
         "verifying": "Checking",
         "extracting": "Unpacking",
-        "done": "Finishing"
+        "done": "Finishing",
+        "opening": "Opening the installer",
+        "installing": "Installing"
       },
       "error": {
         "load": "Could not check for Quarto, Calepin and languages.",
@@ -2756,11 +2775,14 @@
     },
     "actions": {
       "install": "Install",
-      "repair": "Repair"
+      "repair": "Repair",
+      "makeDefault": "Make default",
+      "stopDefault": "Stop using Oleafly"
     },
     "failed": {
       "install": "Couldn't install it. Try again.",
-      "remove": "Couldn't remove it. Try again."
+      "remove": "Couldn't remove it. Try again.",
+      "defaultApp": "Oleafly couldn't become the default for these files. Try again, or pick Oleafly in your system settings."
     },
     "packaged": "Installed with the Oleafly package.",
     "quickAction": {
@@ -2793,7 +2815,33 @@
       "outdated": "It's out of date or macOS blocked it. Repair it to put it back.",
       "elsewhere": "The menu opens another copy of Oleafly. Repair it to use this one.",
       "moved": "It points to a copy of Oleafly that moved. Repair it to use this one.",
-      "noDefaultFileManager": "Your system has no default file manager for folders, so this entry could open every folder in Oleafly. Remove it."
+      "noDefaultFileManager": "Your system has no default file manager for folders, so this entry could open every folder in Oleafly. Remove it.",
+      "noFileType": "This Mac doesn't know this file type, so Oleafly can't set it from here. In Finder, choose Get Info › Open with › Oleafly › Change All."
+    },
+    "defaultLatex": {
+      "label": "LaTeX files (.tex)",
+      "description": "Double-click a .tex file to open it in Oleafly."
+    },
+    "defaultTypst": {
+      "label": "Typst files (.typ)",
+      "description": "Double-click a .typ file to open it in Oleafly."
+    },
+    "defaultMarkdown": {
+      "label": "Markdown files (.md)",
+      "description": "Double-click a .md or .markdown file to open it in Oleafly."
+    },
+    "defaultQuarto": {
+      "label": "Quarto and R Markdown files",
+      "description": "Double-click a .qmd or .Rmd file to open it in Oleafly."
+    },
+    "defaultAppState": {
+      "installed": "Default",
+      "notInstalled": "Not default",
+      "needsAttention": "Not available"
+    },
+    "defaultAppConfirm": {
+      "macos": "If macOS asks, choose Use Oleafly. This row updates when you come back.",
+      "windows": "Pick Oleafly for this file type in Windows Settings. This row updates when you come back."
     }
   },
   "research": {

@@ -156,6 +156,19 @@ describe("Appearance settings tabs", () => {
     expect(useSettingsStore.getState()).toMatchObject({ pdfDarkMode: "off", hoverPreview: true });
   });
 
+  it("sets dark mode for web pages in its own section of the PDF preview tab", async () => {
+    useSettingsStore.getState().setHtmlDarkMode("follow");
+    const user = userEvent.setup();
+    render(<AppearanceSection />);
+    await user.click(screen.getByRole("tab", { name: appearance.tabs.pdf }));
+    expect(screen.getByRole("heading", { name: appearance.preview.html.title })).toBeInTheDocument();
+    const webDark = screen.getByRole("combobox", { name: appearance.preview.html.darkMode.label });
+    expect(webDark).toHaveTextContent(appearance.preview.darkMode.modes.follow);
+    await user.click(webDark);
+    await user.click(screen.getByRole("option", { name: appearance.preview.darkMode.modes.on }));
+    expect(useSettingsStore.getState()).toMatchObject({ htmlDarkMode: "on", pdfDarkMode: "off" });
+  });
+
   it("sets the dark PDF page colors for the theme in use", async () => {
     const user = userEvent.setup();
     render(<AppearanceSection />);

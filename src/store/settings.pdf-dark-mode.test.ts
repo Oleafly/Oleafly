@@ -58,3 +58,30 @@ describe("PDF dark mode setting", () => {
     expect(changeElsewhere(KEY, "1")).toBe("follow");
   });
 });
+
+describe("web page dark mode setting", () => {
+  const HTML_KEY = "oleafly.html.darkMode";
+
+  it("follows the app theme until it is set, and keeps its own value apart from the PDF one", async () => {
+    localStorage.clear();
+    vi.resetModules();
+    const fresh = (await import("./settings")).useSettingsStore;
+    expect(fresh.getState().htmlDarkMode).toBe("follow");
+    fresh.getState().setHtmlDarkMode("off");
+    expect(localStorage.getItem(HTML_KEY)).toBe("0");
+    expect(fresh.getState().pdfDarkMode).toBe("off");
+    fresh.getState().setPdfDarkMode("on");
+    expect(fresh.getState().htmlDarkMode).toBe("off");
+    localStorage.setItem(HTML_KEY, "1");
+    vi.resetModules();
+    expect((await import("./settings")).useSettingsStore.getState().htmlDarkMode).toBe("on");
+  });
+
+  it("takes the web page mode another window picked", () => {
+    const stop = followPdfDarkModeInOtherWindows();
+    localStorage.setItem(HTML_KEY, "0");
+    window.dispatchEvent(new StorageEvent("storage", { key: HTML_KEY, newValue: "0", storageArea: localStorage }));
+    expect(useSettingsStore.getState().htmlDarkMode).toBe("off");
+    stop();
+  });
+});

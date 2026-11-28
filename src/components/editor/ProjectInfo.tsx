@@ -30,7 +30,10 @@ import {
 } from "@/lib/proofreading/dictionary-catalog";
 import { notifyError } from "@/lib/toast";
 import { decodeAppError } from "@/lib/app-error";
-import { setProjectDictionaryLocaleCmd } from "@/lib/tauri";
+import { revokeFolderTrust, setProjectDictionaryLocaleCmd } from "@/lib/tauri";
+import { Switch } from "@/components/ui/switch";
+import { applyShellEscape } from "@/lib/latex-compile-actions";
+import { isNotebookEngine } from "@/lib/notebook-engines";
 import { cn } from "@/lib/utils";
 import { useCollabSettingsLocked, useLiveBackend } from "@/lib/collab-live-bridge";
 import {
@@ -40,7 +43,7 @@ import {
   type OverleafSettingChoice,
 } from "@/lib/overleaf-live";
 import { useFilesStore } from "@/store/files";
-import { folderIsReadOnly, useFolderAccessStore } from "@/store/folder-access";
+import { folderIsReadOnly, folderIsRestricted, useFolderAccessStore } from "@/store/folder-access";
 import type { SyncService } from "@/lib/tauri";
 import {
   useProofreadingStore,
@@ -582,6 +585,68 @@ function FolderSyncNote() {
   );
 }
 
+function ProjectCodeSettings() {
+  const { t } = useTranslation(["editor"]);
+  const projectId = useFilesStore((state) => state.projectId);
+  const engine = useFilesStore((state) => state.engine);
+  const allowed = useFilesStore((state) => state.engine.allow_shell_escape);
+  const restricted = useFolderAccessStore((state) => folderIsRestricted(state, projectId));
+  const trustedFolder = useFolderAccessStore(
+    (state) => state.projectId === projectId && state.trust?.source === "folder",
+  );
+  const trusting = useFolderAccessStore((state) => state.trusting !== null);
+  const grant = useFolderAccessStore((state) => state.grant);
+  const refreshTrust = useFolderAccessStore((state) => state.refreshTrust);
+  const [saving, setSaving] = useState(false);
+  if (!projectId || !(isNotebookEngine(engine) || engine.id === "latexmk")) return null;
+  const toggle = async (next: boolean) => {
+    setSaving(true);
+    try {
+      await applyShellEscape(next, { recompile: next });
+    } finally {
+      setSaving(false);
+    }
+  };
+  const stopTrusting = async () => {
+    try {
+      await revokeFolderTrust(projectId);
+    } catch (error) {
+      notifyError("stop trusting the folder", error);
+    }
+    await refreshTrust(projectId);
+    await useFilesStore.getState().refreshEngine();
+  };
+  return (
+    <div data-testid="project-code-settings">
+      <SectionLabel>{t(($) => $.editor.projectInfo.code.title)}</SectionLabel>
+      <div className="flex items-center justify-between gap-2 py-1.5">
+        <label htmlFor="project-run-code" className="text-xs text-foreground">
+          {t(($) => $.editor.projectInfo.code.run)}
+        </label>
+        <Switch
+          id="project-run-code"
+          checked={allowed && !restricted}
+          disabled={saving || restricted}
+          onCheckedChange={(next) => void toggle(next)}
+        />
+      </div>
+      <p className="text-[0.625rem] leading-relaxed text-muted-foreground">
+        {restricted ? t(($) => $.editor.projectInfo.code.restrictedHint) : t(($) => $.editor.projectInfo.code.hint)}
+      </p>
+      {restricted ? (
+        <Button size="xs" variant="outline" className="mt-1.5" disabled={trusting} onClick={() => void grant("folder")}>
+          {t(($) => $.editor.projectInfo.code.trust)}
+        </Button>
+      ) : null}
+      {trustedFolder ? (
+        <Button size="xs" variant="ghost" className="mt-1.5 px-1" onClick={() => void stopTrusting()}>
+          {t(($) => $.editor.projectInfo.code.stopTrusting)}
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
 export function ProjectInfoContent({
   snapshot,
   surface,
@@ -646,6 +711,7 @@ export function ProjectInfoContent({
             <ProofreadingSection surface={surface} />
           </div>
           <ProjectSpellLanguage />
+          <ProjectCodeSettings />
           <OverleafProjectSettings />
           <LanguageSetupNotice />
           <LanguageRuntimeNotice />

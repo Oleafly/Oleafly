@@ -40,6 +40,7 @@
     "renameAriaLabel": "Byt namn på filen",
     "renameFailed": "Det gick inte att byta namn på \"{{path}}\". Ursprungssökvägen lämnades oförändrad.",
     "setMain": "Ange som huvuddokument",
+    "compileTarget": "Kompilering bygger den här filen, inte huvuddokumentet",
     "title": "Utforskaren",
     "treeAriaLabel": "Filträd i utforskaren",
     "setMainFailed": "Det gick inte att ange \"{{path}}\" som huvuddokument.",

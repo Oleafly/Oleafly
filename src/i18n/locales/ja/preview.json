@@ -101,9 +101,15 @@
     "useTypst": "Typst {{version}} を使う",
     "installTool": "{{tool}} {{version}} をインストール",
     "installToolSize": "{{tool}} {{version}} をインストール（{{size}}）",
+    "installPackage": "{{name}} をインストール",
+    "checkAgain": "もう一度確認",
     "engineSettings": "エンジンの設定を開く",
     "useTectonic": "Tectonic を使う",
-    "useTectonicForEveryone": "全員で Tectonic を使う"
+    "useTectonicForEveryone": "全員で Tectonic を使う",
+    "saveHtml": "HTML をプロジェクトに保存",
+    "downloadPageAsPdf": "表示中のページを PDF でダウンロード",
+    "copyPath": "出力先のパスをコピー",
+    "invertPage": "ウェブページの色を反転"
   },
   "html": {
     "building": "ウェブページをビルドしています",
@@ -131,10 +137,14 @@
     "namePlaceholder": "document.pdf",
     "imageSaved": "画像をプロジェクトに保存しました。",
     "pdfSaved": "PDF をプロジェクトに保存しました。",
-    "failed": "プロジェクトに保存できませんでした。"
+    "failed": "プロジェクトに保存できませんでした。",
+    "htmlDescription": "表示中のウェブページを 1 つの HTML ファイルとしてプロジェクトツリーに保存します。",
+    "htmlPlaceholder": "document.html",
+    "htmlSaved": "ウェブページをプロジェクトに保存しました。"
   },
   "sync": {
     "toggle": "コンパイル時に PDF を同期",
+    "toggleHtml": "コンパイル時に HTML を同期",
     "failed": "{{name}} を更新できませんでした。Oleafly が次回のコンパイルで再試行します。",
     "fastMode": "高速コンパイルではこの PDF は更新されません。",
     "localOnly": "このコピーはこのコンピューターにのみ保存されます。"
@@ -152,7 +162,8 @@
   },
   "empty": {
     "compileUnavailable": "現在、PDF のコンパイルを利用できません。",
-    "compileFailed": "コンパイルに失敗しました。「ログ」タブを開いて原因を確認してください。"
+    "compileFailed": "コンパイルに失敗しました。「ログ」タブを開いて原因を確認してください。",
+    "notCompiled": "{{name}} はまだコンパイルされていません。"
   },
   "a11y": {
     "stale": "古い（最新ではない）PDF です。{{explanation}}",

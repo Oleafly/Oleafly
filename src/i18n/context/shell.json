@@ -26,7 +26,7 @@
     "mode": {
       "normal": "Radio option for the full compile, as opposed to the fast draft mode"
     },
-    "texRootLabel": "Short badge for the LaTeX magic comment % !TEX root. Keep TEX verbatim.",
+    "texRootLabel": "Short warning next to the Compile button when the LaTeX magic comment % !TEX root points to a file that can't be compiled. Keep TEX verbatim.",
     "typEngine": {
       "typst": "Radio option. Typst is a product name. Keep the <note> tags.",
       "calepin": "Radio option. Calepin is a product name that runs the code in a Typst document. Keep the <note> tags."
@@ -36,13 +36,15 @@
       "off": "Radio option: code in the document does not run.",
       "run": "Radio option: the R, Python or Julia code in the document runs on this computer when it compiles."
     },
-    "texRootDocument": "Tooltip on the root badge when the open LaTeX file compiles by itself because it starts with its own \\documentclass. Keep \\documentclass verbatim.",
-    "texRootInclude": "Tooltip on the root badge when the open file is a chapter or section and Oleafly compiles the document that includes it. {{file}} is the open file.",
+    "texRootDocument": "Line in the Compile button tooltip when the open LaTeX file compiles by itself because it starts with its own \\documentclass. Keep \\documentclass verbatim.",
+    "texRootStandalone": "Line in the Compile button tooltip when the open Typst, Markdown or Quarto file compiles by itself because no other document includes it.",
+    "texRootInclude": "Line in the Compile button tooltip when the open file is a chapter or section and Oleafly compiles the document that includes it. {{file}} is the open file.",
     "target": {
       "title": "Heading in the compile options menu for choosing which document a compile builds",
       "open": "Radio option: compile the document that belongs to the file open in the editor",
       "main": "Radio option: always compile the project's main document"
-    }
+    },
+    "wholeProject": "Compile menu item for a Quarto book or website: renders every page instead of only the main document. Quarto is a product name."
   },
   "dock": {
     "settings": "Toolbar button that opens the settings dialog"

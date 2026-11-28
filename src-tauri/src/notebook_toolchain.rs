@@ -5,6 +5,8 @@ use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 
+pub(crate) mod runtimes;
+
 use crate::app_error::AppError;
 use crate::proc::NoConsole;
 use crate::toolchain_download::{
@@ -87,6 +89,7 @@ impl NotebookTool {
 struct Manifest {
     allowed_download_hosts: Vec<String>,
     tools: ManifestTools,
+    installers: runtimes::Installers,
 }
 
 #[derive(Deserialize)]
@@ -170,7 +173,7 @@ pub(crate) struct ToolStatus {
     superseded_versions: Vec<String>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub(crate) enum RuntimeName {
     R,
@@ -184,6 +187,8 @@ pub(crate) struct LanguageRuntime {
     name: RuntimeName,
     path: Option<String>,
     version: Option<String>,
+    installer: Option<runtimes::RuntimeInstaller>,
+    packages: Vec<runtimes::RuntimePackage>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -502,12 +507,72 @@ pub(crate) fn rscript() -> Option<PathBuf> {
     })
 }
 
-pub(crate) fn python() -> Option<PathBuf> {
+fn windows_python_rank(folder: &str) -> Option<(u64, bool)> {
+    let rest = folder.strip_prefix("Python3")?;
+    let (minor, bits) = rest
+        .split_once('-')
+        .map_or((rest, None), |(minor, bits)| (minor, Some(bits)));
+    Some((minor.parse().ok()?, bits.is_none_or(|bits| bits != "32")))
+}
+
+fn installed_pythons_under(root: &Path, executable: &str) -> Vec<PathBuf> {
+    let Ok(entries) = std::fs::read_dir(root) else {
+        return Vec::new();
+    };
+    let mut found: Vec<((u64, bool), PathBuf)> = entries
+        .flatten()
+        .filter_map(|entry| {
+            let rank = windows_python_rank(&entry.file_name().to_string_lossy())?;
+            Some((rank, entry.path().join(executable)))
+        })
+        .filter(|(_, path)| path.is_file())
+        .collect();
+    found.sort_by_key(|(rank, _)| std::cmp::Reverse(*rank));
+    found.into_iter().map(|(_, path)| path).collect()
+}
+
+fn known_pythons() -> Vec<PathBuf> {
     if cfg!(windows) {
+        let per_user = std::env::var_os("LOCALAPPDATA")
+            .map(|root| PathBuf::from(root).join("Programs").join("Python"));
+        let machine = std::env::var_os("ProgramFiles").map(PathBuf::from);
+        per_user
+            .into_iter()
+            .chain(machine)
+            .flat_map(|root| installed_pythons_under(&root, "python.exe"))
+            .collect()
+    } else if cfg!(target_os = "macos") {
+        let frameworks = Path::new("/Library/Frameworks/Python.framework/Versions");
+        let mut found: Vec<PathBuf> = std::fs::read_dir(frameworks)
+            .into_iter()
+            .flatten()
+            .flatten()
+            .filter(|entry| entry.file_name().to_string_lossy().starts_with("3."))
+            .map(|entry| entry.path().join("bin").join("python3"))
+            .filter(|path| path.is_file())
+            .collect();
+        found.sort_by_key(|path| {
+            path.parent()
+                .and_then(Path::parent)
+                .and_then(Path::file_name)
+                .and_then(|name| major_minor(&name.to_string_lossy()))
+        });
+        found.reverse();
+        found
+    } else {
+        Vec::new()
+    }
+}
+
+pub(crate) fn python() -> Option<PathBuf> {
+    let found = if cfg!(windows) {
         locate("python").or_else(|| locate("python3"))
     } else {
         locate("python3").or_else(|| locate("python"))
-    }
+    };
+    found
+        .filter(|path| crate::program_locator::runnable(path))
+        .or_else(|| known_pythons().into_iter().next())
 }
 
 pub(crate) fn julia() -> Option<PathBuf> {
@@ -520,19 +585,36 @@ pub(crate) fn julia() -> Option<PathBuf> {
 }
 
 fn runtime(name: RuntimeName, path: Option<PathBuf>) -> LanguageRuntime {
+    let packages = match (name, path.as_deref()) {
+        (RuntimeName::R, Some(rscript)) => runtimes::r_packages(rscript),
+        (RuntimeName::Python, Some(python)) => runtimes::python_packages(python),
+        _ => Vec::new(),
+    };
     LanguageRuntime {
         name,
         version: path.as_deref().and_then(probe_version),
+        installer: path.is_none().then(|| runtimes::installer(name)).flatten(),
+        packages,
         path: path.map(|path| path.to_string_lossy().into_owned()),
     }
 }
 
 fn runtimes() -> Vec<LanguageRuntime> {
-    vec![
-        runtime(RuntimeName::R, rscript()),
-        runtime(RuntimeName::Python, python()),
-        runtime(RuntimeName::Julia, julia()),
-    ]
+    std::thread::scope(|scope| {
+        let r = scope.spawn(|| runtime(RuntimeName::R, rscript()));
+        let python = scope.spawn(|| {
+            runtime(
+                RuntimeName::Python,
+                runtimes::managed_python().or_else(python),
+            )
+        });
+        let julia = runtime(RuntimeName::Julia, julia());
+        [r.join(), python.join()]
+            .into_iter()
+            .filter_map(Result::ok)
+            .chain(std::iter::once(julia))
+            .collect()
+    })
 }
 
 fn unset(name: &str) -> bool {
@@ -581,20 +663,26 @@ fn environment_python(environment: &Path) -> Option<PathBuf> {
     .find(|path| path.is_file())
 }
 
-fn project_python(project_dir: &Path) -> Option<(PathBuf, PathBuf)> {
+fn project_environment_where(
+    project_dir: &Path,
+    keep: impl Fn(&Path) -> bool,
+) -> Option<(PathBuf, PathBuf)> {
     PYTHON_ENVIRONMENTS
         .iter()
         .map(|name| project_dir.join(name))
-        .filter(|environment| environment.join("pyvenv.cfg").is_file())
+        .filter(|environment| environment.join("pyvenv.cfg").is_file() && keep(environment))
         .find_map(|environment| {
-            let folders = site_packages(&environment);
-            JUPYTER_MODULES
-                .iter()
-                .all(|module| folders.iter().any(|folder| folder.join(module).exists()))
-                .then(|| environment_python(&environment))
-                .flatten()
-                .map(|python| (environment, python))
+            environment_python(&environment).map(|python| (environment, python))
         })
+}
+
+fn project_python(project_dir: &Path) -> Option<(PathBuf, PathBuf)> {
+    project_environment_where(project_dir, |environment| {
+        let folders = site_packages(environment);
+        JUPYTER_MODULES
+            .iter()
+            .all(|module| folders.iter().any(|folder| folder.join(module).exists()))
+    })
 }
 
 fn quarto_python_variables(project_dir: &Path, allow_code: bool) -> Vec<(&'static str, String)> {
@@ -621,7 +709,12 @@ fn quarto_python_variables(project_dir: &Path, allow_code: bool) -> Vec<(&'stati
             ];
         }
     }
-    python()
+    let conda = allow_code
+        .then(|| runtimes::conda_python(project_dir, dirs::home_dir().as_deref()))
+        .flatten();
+    conda
+        .or_else(runtimes::managed_python)
+        .or_else(python)
         .map(|path| ("QUARTO_PYTHON", path.to_string_lossy().into_owned()))
         .into_iter()
         .collect()
@@ -815,7 +908,7 @@ fn remove_blocking(tool: NotebookTool) -> Result<NotebookToolchainStatus, String
     Ok(current_status())
 }
 
-fn is_plain_file(path: &Path) -> bool {
+pub(crate) fn is_plain_file(path: &Path) -> bool {
     std::fs::symlink_metadata(path).is_ok_and(|metadata| metadata.is_file())
 }
 
@@ -847,6 +940,14 @@ pub(crate) fn compiled_html(
     };
     compiled_html_in(&build, document.as_deref())
         .ok_or_else(|| String::from(AppError::new("notebook.no_html_output")))
+}
+
+pub(crate) fn compiled_page(project_id: &str, main_document: &str) -> Option<PathBuf> {
+    let document = crate::sandbox::resolve_in_project(project_id, main_document).ok()?;
+    if !crate::document_engine::quarto_renders_one_page(&document) {
+        return None;
+    }
+    compiled_html(project_id, Some(main_document)).ok()
 }
 
 fn html_opener_commands(html: &Path) -> Vec<std::process::Command> {
@@ -943,6 +1044,35 @@ mod tests {
         assert_eq!(rscript["PYTHONHOME"], None);
         assert_eq!(rscript["LD_LIBRARY_PATH"], None);
         assert!(applied(&image.root.join("usr/bin/tectonic")).is_empty());
+    }
+
+    #[test]
+    fn the_newest_64_bit_windows_python_comes_first() {
+        assert_eq!(windows_python_rank("Python313"), Some((13, true)));
+        assert_eq!(windows_python_rank("Python313-32"), Some((13, false)));
+        assert_eq!(windows_python_rank("Python39"), Some((9, true)));
+        assert_eq!(windows_python_rank("Python2"), None);
+        let root = tempfile::tempdir().unwrap();
+        for folder in ["Python39", "Python313-32", "Python313", "Python312"] {
+            std::fs::create_dir_all(root.path().join(folder)).unwrap();
+            std::fs::write(root.path().join(folder).join("python.exe"), "").unwrap();
+        }
+        let found = installed_pythons_under(root.path(), "python.exe");
+        let names: Vec<String> = found
+            .iter()
+            .map(|path| {
+                path.parent()
+                    .unwrap()
+                    .file_name()
+                    .unwrap()
+                    .to_string_lossy()
+                    .into_owned()
+            })
+            .collect();
+        assert_eq!(
+            names,
+            ["Python313", "Python313-32", "Python312", "Python39"]
+        );
     }
 
     #[test]

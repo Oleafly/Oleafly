@@ -4,6 +4,7 @@ import {
   Accessibility,
   ChevronDown,
   ChevronUp,
+  ClipboardCopy,
   Columns2,
   Contrast,
   Download,
@@ -91,6 +92,8 @@ export interface PdfToolbarControlsProps {
   onSettings?: () => void;
   onPresent?: (mode: PresentMode) => void;
   onOpenInBrowser?: () => void;
+  onCopyPath?: () => void;
+  webPage?: boolean;
   annotations?: PdfAnnotationsToolbar | null;
 }
 
@@ -122,8 +125,9 @@ const PAGE_LAYOUTS: readonly {
 ];
 
 export function PdfToolbarControls({
-  isImage, hasDocument, numPages, page, pageInput, setPageInput, jumpToPage, pdfRef, layout, setLayout, outlineOpen, setOutlineOpen, searchOpen, setSearchOpen, searchInputRef, setSearchInput, scale, setScale, setClampedScale, userZoom, fitPreview, exporting = false, exportDisplayedPreview, downloadActionLabel, onSave, pdfSync = null, inverted, setInverted, screenReaderMode, setScreenReaderMode, rotation, rotationPending, onRotate, isFs, setFsToolbarHidden, toggleFullscreen, detached = false, onWindow, onSettings, onPresent, onOpenInBrowser, annotations = null
+  isImage, hasDocument, numPages, page, pageInput, setPageInput, jumpToPage, pdfRef, layout, setLayout, outlineOpen, setOutlineOpen, searchOpen, setSearchOpen, searchInputRef, setSearchInput, scale, setScale, setClampedScale, userZoom, fitPreview, exporting = false, exportDisplayedPreview, downloadActionLabel, onSave, pdfSync = null, inverted, setInverted, screenReaderMode, setScreenReaderMode, rotation, rotationPending, onRotate, isFs, setFsToolbarHidden, toggleFullscreen, detached = false, onWindow, onSettings, onPresent, onOpenInBrowser, onCopyPath, webPage = false, annotations = null
 }: Readonly<PdfToolbarControlsProps>) {
+  const pdfShown = hasDocument && !webPage;
   const { t } = useTranslation(["preview", "ai", "annotations"]);
   const [zoomMenuOpen, setZoomMenuOpen] = useState(false);
   const { containerRef: pdfToolbarRef, availableWidth: pdfToolbarWidth } =
@@ -175,9 +179,9 @@ export function PdfToolbarControls({
     ),
   });
 
-  const saveLabel = isImage
-    ? t(($) => $.preview.actions.saveImage)
-    : t(($) => $.preview.actions.savePdf);
+  let saveLabel = t(($) => $.preview.actions.savePdf);
+  if (isImage) saveLabel = t(($) => $.preview.actions.saveImage);
+  if (webPage) saveLabel = t(($) => $.preview.actions.saveHtml);
 
   const saveMenuItems = (sync: PdfSyncToggle, onSave: () => void) => (
     <>
@@ -198,7 +202,7 @@ export function PdfToolbarControls({
       >
         <span className="flex items-center gap-2 whitespace-nowrap">
           <RefreshCw className="size-4" />
-          {t(($) => $.preview.sync.toggle)}
+          {webPage ? t(($) => $.preview.sync.toggleHtml) : t(($) => $.preview.sync.toggle)}
         </span>
         <Switch
           checked={sync.enabled}
@@ -299,7 +303,7 @@ export function PdfToolbarControls({
     const inkGroup: ToolbarControl[] = [];
     const fileGroup: ToolbarControl[] = [];
     const windowGroup: ToolbarControl[] = [];
-    if (numPages > 0 && !isImage) {
+    if (numPages > 0 && !isImage && !webPage) {
       if (numPages > 1) {
         layoutGroup.push(
           {
@@ -446,7 +450,7 @@ export function PdfToolbarControls({
         },
       );
     }
-    if (hasDocument && !isImage) {
+    if (pdfShown && !isImage) {
       findGroup.push(
         iconControl(
           "outline",
@@ -491,7 +495,7 @@ export function PdfToolbarControls({
         );
       }
     }
-    zoomGroup.push({
+    if (!webPage) zoomGroup.push({
       id: "zoom",
       width: 128,
       render: () => (
@@ -558,6 +562,13 @@ export function PdfToolbarControls({
         </DropdownMenuSub>
       ),
     });
+    const invertLabel = webPage ? t(($) => $.preview.actions.invertPage) : t(($) => $.preview.actions.invert);
+    let downloadTooltip = t(($) => $.preview.actions.downloadDisplayedPdf);
+    if (isImage) downloadTooltip = t(($) => $.preview.actions.downloadImage);
+    if (webPage) downloadTooltip = t(($) => $.preview.actions.downloadPageAsPdf);
+    let downloadMenuLabel = t(($) => $.preview.actions.downloadPdf);
+    if (isImage) downloadMenuLabel = t(($) => $.preview.actions.downloadImage);
+    if (webPage) downloadMenuLabel = downloadTooltip;
     if (exportDisplayedPreview) {
       const download = exportDisplayedPreview;
       fileGroup.push(
@@ -565,20 +576,14 @@ export function PdfToolbarControls({
         id: "download",
         width: ICON_BUTTON_WIDTH,
         render: () => (
-          <Tooltip
-            label={
-              isImage
-                ? t(($) => $.preview.actions.downloadImage)
-                : t(($) => $.preview.actions.downloadDisplayedPdf)
-            }
-          >
+          <Tooltip label={downloadTooltip}>
             <Button
               variant="ghost"
               size="icon"
               className="size-7"
               disabled={!hasDocument || exporting}
               onClick={() => void download()}
-              aria-label={downloadActionLabel?.() ?? t(($) => $.preview.actions.downloadPdf)}
+              aria-label={downloadActionLabel?.() ?? downloadMenuLabel}
             >
               {exporting ? (
                 <Spinner size="sm" />
@@ -595,29 +600,34 @@ export function PdfToolbarControls({
             onSelect={() => void download()}
           >
             <Download className="size-4" />
-            {isImage
-              ? t(($) => $.preview.actions.downloadImage)
-              : t(($) => $.preview.actions.downloadPdf)}
+            {downloadMenuLabel}
           </DropdownMenuItem>
         ),
       },
       );
     }
     if (onSave) fileGroup.push(saveControl(onSave));
+    if (onCopyPath) {
+      fileGroup.push(
+        iconControl("copy-path", ClipboardCopy, t(($) => $.preview.actions.copyPath), onCopyPath, {
+          disabled: !hasDocument,
+        }),
+      );
+    }
     inkGroup.push(
       iconControl(
         "invert",
         Contrast,
-        t(($) => $.preview.actions.invert),
+        invertLabel,
         () => setInverted(!inverted),
         {
           disabled: !hasDocument,
           active: inverted,
-          tooltip: inverted
-            ? t(($) => $.preview.actions.restoreColors)
-            : t(($) => $.preview.actions.invert),
+          tooltip: inverted ? t(($) => $.preview.actions.restoreColors) : invertLabel,
         },
       ),
+    );
+    if (!webPage) inkGroup.push(
       iconControl(
         "screen-reader",
         Accessibility,
@@ -632,7 +642,7 @@ export function PdfToolbarControls({
         },
       ),
     );
-    if (!isImage) {
+    if (!isImage && !webPage) {
       inkGroup.push(
         iconControl(
           "rotate",
@@ -699,7 +709,7 @@ export function PdfToolbarControls({
         iconControl("open-browser", Globe, t(($) => $.preview.html.open), onOpenInBrowser),
       );
     }
-    if (onPresent && hasDocument && !isImage && numPages > 0) {
+    if (onPresent && pdfShown && !isImage && numPages > 0) {
       viewGroup.push({
         id: "present",
         width: ICON_BUTTON_WIDTH,

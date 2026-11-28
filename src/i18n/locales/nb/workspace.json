@@ -40,6 +40,7 @@
     "renameAriaLabel": "Gi filen nytt navn",
     "renameFailed": "Kunne ikke gi \"{{path}}\" nytt navn. Den opprinnelige stien ble stående uendret.",
     "setMain": "Bruk som hoveddokument",
+    "compileTarget": "Kompilering bygger denne filen, ikke hoveddokumentet",
     "title": "Utforsker",
     "treeAriaLabel": "Filtreet i utforskeren",
     "setMainFailed": "Kunne ikke bruke \"{{path}}\" som hoveddokument.",

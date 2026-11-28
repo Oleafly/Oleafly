@@ -103,9 +103,15 @@
     "useTypst": "Folosește Typst {{version}}",
     "installTool": "Instalează {{tool}} {{version}}",
     "installToolSize": "Instalează {{tool}} {{version}} ({{size}})",
+    "installPackage": "Instalează {{name}}",
+    "checkAgain": "Verifică din nou",
     "engineSettings": "Deschide setările motorului",
     "useTectonic": "Folosește Tectonic",
-    "useTectonicForEveryone": "Folosește Tectonic pentru toți"
+    "useTectonicForEveryone": "Folosește Tectonic pentru toți",
+    "saveHtml": "Salvează HTML-ul în proiect",
+    "downloadPageAsPdf": "Descarcă pagina afișată ca PDF",
+    "copyPath": "Copiază calea rezultatului",
+    "invertPage": "Inversează culorile paginii web"
   },
   "html": {
     "building": "Se compilează pagina web",
@@ -133,10 +139,14 @@
     "namePlaceholder": "document.pdf",
     "imageSaved": "Imaginea a fost salvată în proiect.",
     "pdfSaved": "PDF-ul a fost salvat în proiect.",
-    "failed": "Nu s-a putut salva în proiect."
+    "failed": "Nu s-a putut salva în proiect.",
+    "htmlDescription": "Salvează pagina web afișată în arborele proiectului, ca un singur fișier HTML.",
+    "htmlPlaceholder": "document.html",
+    "htmlSaved": "Pagina web a fost salvată în proiect."
   },
   "sync": {
     "toggle": "Sincronizează PDF-ul la compilare",
+    "toggleHtml": "Sincronizează HTML-ul la compilare",
     "failed": "{{name}} nu a putut fi actualizat. Oleafly va încerca din nou la următoarea compilare.",
     "fastMode": "Compilările rapide nu actualizează acest PDF.",
     "localOnly": "Această copie rămâne pe acest computer."
@@ -154,7 +164,8 @@
   },
   "empty": {
     "compileUnavailable": "Compilarea PDF nu este disponibilă acum.",
-    "compileFailed": "Compilarea a eșuat. Deschide fila Jurnale ca să vezi ce nu a mers."
+    "compileFailed": "Compilarea a eșuat. Deschide fila Jurnale ca să vezi ce nu a mers.",
+    "notCompiled": "{{name}} nu a fost compilat încă."
   },
   "a11y": {
     "stale": "PDF învechit, care nu este cel curent. {{explanation}}",

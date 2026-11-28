@@ -58,7 +58,7 @@
     },
     "trustFolder": {
       "title": "信任這個資料夾？",
-      "message": "Oleafly 將為 {{name}} 開啟 Git、終端機、代理程式與 LaTeX 工具。請只信任你了解其內容的資料夾。",
+      "message": "Oleafly 將為 {{name}} 開啟 Git、終端機、代理程式、latexmk 與 Quarto。資料夾中的程式碼只有在你允許後才會執行。請只信任你了解其內容的資料夾。",
       "messageParent": "Oleafly 將信任 {{name}} 及其中的所有資料夾，包括你之後開啟的資料夾。",
       "messageRepository": "Oleafly 將在 {{name}} 中以儲存庫本身的設定與掛鉤執行 Git。",
       "confirm": "信任"

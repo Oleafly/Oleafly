@@ -157,6 +157,7 @@
       "specialFile": "Není běžný soubor",
       "tooLarge": "Příliš velký pro synchronizaci",
       "packageFolder": "Nainstalované balíčky, které lze znovu nainstalovat",
+      "privateFile": "Soubor relace R, který může obsahovat hesla nebo klíče",
       "zipLeftovers": "Zbytek po rozbalení archivu",
       "unreadable": "Nepodařilo se přečíst",
       "downloadFailed": "Nepodařilo se stáhnout",

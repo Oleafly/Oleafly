@@ -103,9 +103,15 @@
     "useTypst": "Usar Typst {{version}}",
     "installTool": "Instalar o {{tool}} {{version}}",
     "installToolSize": "Instalar o {{tool}} {{version}} ({{size}})",
+    "installPackage": "Instalar {{name}}",
+    "checkAgain": "Verificar de novo",
     "engineSettings": "Abrir as configurações do motor",
     "useTectonic": "Usar Tectonic",
-    "useTectonicForEveryone": "Usar Tectonic para todos"
+    "useTectonicForEveryone": "Usar Tectonic para todos",
+    "saveHtml": "Salvar o HTML no projeto",
+    "downloadPageAsPdf": "Baixar a página exibida como PDF",
+    "copyPath": "Copiar o caminho do resultado",
+    "invertPage": "Inverter as cores da página da web"
   },
   "html": {
     "building": "Gerando a página da web",
@@ -133,10 +139,14 @@
     "namePlaceholder": "documento.pdf",
     "imageSaved": "Imagem salva no projeto.",
     "pdfSaved": "PDF salvo no projeto.",
-    "failed": "Não foi possível salvar no projeto."
+    "failed": "Não foi possível salvar no projeto.",
+    "htmlDescription": "Salva a página da web exibida na árvore do projeto como um único arquivo HTML.",
+    "htmlPlaceholder": "documento.html",
+    "htmlSaved": "Página da web salva no projeto."
   },
   "sync": {
     "toggle": "Sincronizar PDF ao compilar",
+    "toggleHtml": "Sincronizar HTML ao compilar",
     "failed": "Não foi possível atualizar {{name}}. O Oleafly tentará novamente na próxima compilação.",
     "fastMode": "Compilações rápidas não atualizam este PDF.",
     "localOnly": "Esta cópia fica neste computador."
@@ -154,7 +164,8 @@
   },
   "empty": {
     "compileUnavailable": "A compilação de PDF está indisponível no momento.",
-    "compileFailed": "A compilação falhou. Abra a aba Logs para ver o que deu errado."
+    "compileFailed": "A compilação falhou. Abra a aba Logs para ver o que deu errado.",
+    "notCompiled": "{{name}} ainda não foi compilado."
   },
   "a11y": {
     "stale": "PDF desatualizado, que não é o atual. {{explanation}}",

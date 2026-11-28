@@ -139,6 +139,7 @@
       "specialFile": "Keine reguläre Datei",
       "tooLarge": "Zu groß für den Abgleich",
       "packageFolder": "Installierte Pakete, die Sie neu installieren können",
+      "privateFile": "R-Sitzungsdatei, die Passwörter oder Schlüssel enthalten kann",
       "zipLeftovers": "Überbleibsel vom Entpacken",
       "unreadable": "Konnte nicht gelesen werden",
       "downloadFailed": "Konnte nicht heruntergeladen werden",

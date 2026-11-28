@@ -564,7 +564,6 @@
     "uploading": "Abbildungen und andere Dateien werden hochgeladen: {{done}} von {{total}}",
     "saving": "Das Projekt wird auf dem Server gespeichert…",
     "failed": "Das Teilen wurde nicht abgeschlossen, daher wurde nichts geteilt.",
-    "trustAgain": "Alle, die Sie zu diesem Projekt hinzufügen, können seine Dateien ändern. Deshalb bittet Oleafly Sie auf diesem Computer erneut, ihm zu vertrauen, bevor es dafür Agenten, Terminalbefehle oder shell escape ausführt.",
     "projectNotesShared": "Die Notizen des Projekts sind für alle in diesem Projekt freigegeben. Persönliche Notizen bleiben privat.",
     "personalNotesPrivate": "Persönliche Notizen bleiben privat. Nur Notizen im Notizordner des Projekts werden geteilt.",
     "unlinkOverleaf": "Verknüpfung mit Overleaf aufheben",

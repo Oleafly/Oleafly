@@ -70,12 +70,20 @@ describe("usePdfSync", () => {
 
     act(() => result.current?.setEnabled(true));
     await waitFor(() => expect(result.current?.enabled).toBe(true));
-    expect(mocks.pdfSyncSet).toHaveBeenLastCalledWith("alpha", true, "pdf-v1:1:aa");
+    expect(mocks.pdfSyncSet).toHaveBeenLastCalledWith("alpha", true, "pdf-v1:1:aa", false);
 
     mocks.pdfSyncSet.mockResolvedValue(off);
     act(() => result.current?.setEnabled(false));
     await waitFor(() => expect(result.current?.enabled).toBe(false));
-    expect(mocks.pdfSyncSet).toHaveBeenLastCalledWith("alpha", false, null);
+    expect(mocks.pdfSyncSet).toHaveBeenLastCalledWith("alpha", false, null, false);
+  });
+
+  it("asks the app to copy the built web page instead of a PDF", async () => {
+    const { result } = setup({ page: true });
+    await waitFor(() => expect(mocks.pdfSyncStatus).toHaveBeenCalled());
+    act(() => result.current?.setEnabled(true));
+    await waitFor(() => expect(result.current?.enabled).toBe(true));
+    expect(mocks.pdfSyncSet).toHaveBeenLastCalledWith("alpha", true, null, true);
   });
 
   it("shows no toast for a background failure and names the file instead", async () => {

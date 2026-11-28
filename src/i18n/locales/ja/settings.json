@@ -1058,6 +1058,13 @@
       "hoverPreview": {
         "description": "ライブラリでプロジェクトにカーソルを合わせると、最後にコンパイルしたページを表示します。",
         "label": "カーソルを合わせて PDF をプレビュー"
+      },
+      "html": {
+        "title": "ウェブページのプレビュー",
+        "darkMode": {
+          "label": "ウェブページのダークモード",
+          "description": "ウェブページを生成する Quarto 文書が対象です。「アプリのテーマに合わせる」では、アプリがダークのときにページを暗くし、画像は元の色のまま表示します。プレビューのツールバーにある色の反転ボタンを押すと、この設定は「オン」または「オフ」になります。"
+        }
       }
     },
     "sectionName": "外観",
@@ -1767,7 +1774,17 @@
         "heading": "言語",
         "tooltip": "Quarto と Calepin の文書のコードは、これらのプログラムで実行されます。",
         "notFound": "見つかりません",
-        "note": "Oleafly は、このコンピュータにすでにある R、Python、Julia でコードを実行します。これらを Oleafly がインストールすることはありません。"
+        "note": "Oleafly は、このコンピュータの R、Python、Julia でコードを実行します。R と Python の公式インストーラをダウンロードしたり、knitr、rmarkdown、Jupyter をインストールしたりすることもできます。",
+        "installerNote": "Oleafly は公式インストーラをダウンロードして検証し、開きます。インストールが終わったら、ここに戻ってもう一度確認してください。",
+        "finishInstaller": "{{name}} のインストーラを最後まで進めてから、もう一度確認してください。",
+        "checkAgain": "もう一度確認",
+        "packageManager": {
+          "r": "パッケージマネージャで R をインストールしてください。例: sudo apt install r-base または sudo dnf install R。その後、もう一度確認してください。",
+          "python": "パッケージマネージャで Python 3 をインストールしてください。例: sudo apt install python3 python3-venv。その後、もう一度確認してください。"
+        },
+        "installYourself": "{{name}} を公式サイトからインストールしてから、もう一度確認してください。",
+        "packagesMissing": "未インストール: {{packages}}",
+        "installPackages": "{{packages}} をインストール"
       },
       "codeNote": "文書内のコードは、コンパイルメニューでそのプロジェクトのコードを許可した後にのみ実行されます。",
       "progress": {
@@ -1775,7 +1792,9 @@
         "downloading": "ダウンロード中 {{percent}}%",
         "verifying": "確認しています",
         "extracting": "展開しています",
-        "done": "仕上げています"
+        "done": "仕上げています",
+        "opening": "インストーラを開いています",
+        "installing": "インストール中"
       },
       "error": {
         "load": "Quarto、Calepin、言語を確認できませんでした。",
@@ -2735,11 +2754,14 @@
     },
     "actions": {
       "install": "インストール",
-      "repair": "修復"
+      "repair": "修復",
+      "makeDefault": "Make default",
+      "stopDefault": "Stop using Oleafly"
     },
     "failed": {
       "install": "インストールできませんでした。もう一度お試しください。",
-      "remove": "削除できませんでした。もう一度お試しください。"
+      "remove": "削除できませんでした。もう一度お試しください。",
+      "defaultApp": "Oleafly couldn't become the default for these files. Try again, or pick Oleafly in your system settings."
     },
     "packaged": "Oleafly のパッケージと一緒にインストールされています。",
     "quickAction": {
@@ -2772,7 +2794,33 @@
       "outdated": "古くなっているか、macOS によってブロックされています。修復すると元に戻ります。",
       "elsewhere": "メニューが別の Oleafly を開きます。修復するとこのコピーを使います。",
       "moved": "移動した Oleafly を指しています。修復するとこのコピーを使います。",
-      "noDefaultFileManager": "フォルダ用の既定のファイルマネージャーが設定されていないため、この項目によってすべてのフォルダが Oleafly で開かれる可能性があります。削除してください。"
+      "noDefaultFileManager": "フォルダ用の既定のファイルマネージャーが設定されていないため、この項目によってすべてのフォルダが Oleafly で開かれる可能性があります。削除してください。",
+      "noFileType": "This Mac doesn't know this file type, so Oleafly can't set it from here. In Finder, choose Get Info › Open with › Oleafly › Change All."
+    },
+    "defaultLatex": {
+      "label": "LaTeX files (.tex)",
+      "description": "Double-click a .tex file to open it in Oleafly."
+    },
+    "defaultTypst": {
+      "label": "Typst files (.typ)",
+      "description": "Double-click a .typ file to open it in Oleafly."
+    },
+    "defaultMarkdown": {
+      "label": "Markdown files (.md)",
+      "description": "Double-click a .md or .markdown file to open it in Oleafly."
+    },
+    "defaultQuarto": {
+      "label": "Quarto and R Markdown files",
+      "description": "Double-click a .qmd or .Rmd file to open it in Oleafly."
+    },
+    "defaultAppState": {
+      "installed": "Default",
+      "notInstalled": "Not default",
+      "needsAttention": "Not available"
+    },
+    "defaultAppConfirm": {
+      "macos": "If macOS asks, choose Use Oleafly. This row updates when you come back.",
+      "windows": "Pick Oleafly for this file type in Windows Settings. This row updates when you come back."
     }
   },
   "research": {

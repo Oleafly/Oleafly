@@ -102,9 +102,15 @@
     "useTypst": "Brug Typst {{version}}",
     "installTool": "Installer {{tool}} {{version}}",
     "installToolSize": "Installer {{tool}} {{version}} ({{size}})",
+    "installPackage": "Installer {{name}}",
+    "checkAgain": "Tjek igen",
     "engineSettings": "Åbn motorindstillinger",
     "useTectonic": "Brug Tectonic",
-    "useTectonicForEveryone": "Brug Tectonic for alle"
+    "useTectonicForEveryone": "Brug Tectonic for alle",
+    "saveHtml": "Gem HTML i projektet",
+    "downloadPageAsPdf": "Download den viste side som PDF",
+    "copyPath": "Kopiér outputstien",
+    "invertPage": "Inverter websidens farver"
   },
   "html": {
     "building": "Bygger websiden",
@@ -132,10 +138,14 @@
     "namePlaceholder": "dokument.pdf",
     "imageSaved": "Billedet er gemt i projektet.",
     "pdfSaved": "PDF'en er gemt i projektet.",
-    "failed": "Kunne ikke gemme i projektet."
+    "failed": "Kunne ikke gemme i projektet.",
+    "htmlDescription": "Gemmer den viste webside i projekttræet som én HTML-fil.",
+    "htmlPlaceholder": "dokument.html",
+    "htmlSaved": "Websiden er gemt i projektet."
   },
   "sync": {
     "toggle": "Synkroniser PDF ved kompilering",
+    "toggleHtml": "Synkroniser HTML ved kompilering",
     "failed": "{{name}} kunne ikke opdateres. Oleafly prøver igen ved næste kompilering.",
     "fastMode": "Hurtige kompileringer opdaterer ikke denne PDF.",
     "localOnly": "Denne kopi bliver på denne computer."
@@ -153,7 +163,8 @@
   },
   "empty": {
     "compileUnavailable": "PDF-kompilering er ikke tilgængelig lige nu.",
-    "compileFailed": "Kompileringen mislykkedes. Åbn fanen Logfiler for at se, hvad der gik galt."
+    "compileFailed": "Kompileringen mislykkedes. Åbn fanen Logfiler for at se, hvad der gik galt.",
+    "notCompiled": "{{name}} er ikke kompileret endnu."
   },
   "a11y": {
     "stale": "Forældet PDF, der ikke er aktuel. {{explanation}}",

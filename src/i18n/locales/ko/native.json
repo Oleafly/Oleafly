@@ -58,7 +58,7 @@
     },
     "trustFolder": {
       "title": "이 폴더를 신뢰할까요?",
-      "message": "Oleafly가 {{name}}에서 Git, 터미널, 에이전트와 LaTeX 도구를 켭니다. 내용을 알고 있는 폴더만 신뢰하세요.",
+      "message": "Oleafly가 {{name}}에서 Git, 터미널, 에이전트, latexmk와 Quarto를 켭니다. 폴더 안의 코드는 허용한 뒤에만 실행됩니다. 내용을 알고 있는 폴더만 신뢰하세요.",
       "messageParent": "Oleafly가 {{name}}과 그 안의 모든 폴더를 신뢰합니다. 나중에 여는 폴더도 포함됩니다.",
       "messageRepository": "Oleafly가 {{name}}에서 저장소 자체의 설정과 훅으로 Git을 실행합니다.",
       "confirm": "신뢰"

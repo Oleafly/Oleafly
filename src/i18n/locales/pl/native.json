@@ -58,7 +58,7 @@
     },
     "trustFolder": {
       "title": "Zaufać temu folderowi?",
-      "message": "Oleafly włączy Git, terminal, agentów i narzędzia LaTeX dla {{name}}. Ufaj tylko folderom, których zawartość znasz.",
+      "message": "Oleafly włączy Git, terminal, agentów, latexmk i Quarto dla {{name}}. Kod w folderze uruchomi się dopiero, gdy na to pozwolisz. Ufaj tylko folderom, których zawartość znasz.",
       "messageParent": "Oleafly zaufa folderowi {{name}} i każdemu folderowi w nim, także tym, które otworzysz później.",
       "messageRepository": "Oleafly będzie uruchamiać Git w {{name}} z własnymi ustawieniami i hookami repozytorium.",
       "confirm": "Zaufaj"

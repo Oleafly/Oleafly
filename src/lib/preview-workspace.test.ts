@@ -4,7 +4,8 @@ import { createCompileSuccessCheckpoint, type CompileSuccessCheckpoint } from "@
 const mocks = vi.hoisted(() => ({
   detachedProject: "current" as string | null,
   checkpoint: null as CompileSuccessCheckpoint | null,
-  htmlOutput: null as { projectId: string; path: string; builtAt: number } | null,
+  htmlOutput: null as { projectId: string; mainDocument?: string; path: string; builtAt: number } | null,
+  exportCurrentDocument: vi.fn(async (_format: string, _mainDoc?: string) => {}),
   detachedChanged: (() => {}) as () => void,
   unsubscribeDetached: vi.fn(),
   handlers: new Map<string, (event: { payload: unknown }) => void>(),
@@ -37,6 +38,7 @@ const mocks = vi.hoisted(() => ({
   tauri: true,
 }));
 vi.mock("@/features/synctex", () => ({ openFileAndGotoLine: mocks.openFileAndGotoLine }));
+vi.mock("@/features/export", () => ({ exportCurrentDocument: mocks.exportCurrentDocument }));
 vi.mock("@/features/ask-ai-compile-errors", () => ({ askAiAboutCompileErrors: mocks.askAiAboutCompileErrors }));
 vi.mock("@/store/settings", () => ({ useSettingsStore: { getState: () => ({ openSettingsAt: mocks.openSettingsAt, setSettingsOpen: mocks.setSettingsOpen }) } }));
 vi.mock("@/store/tours", () => ({ useTourStore: { getState: () => ({ activeTourId: mocks.activeTourId }) } }));
@@ -277,10 +279,23 @@ describe("detached compile commands", () => {
   it("tells the detached window about the web page this project built, and not another's", async () => {
     const page = { projectId: "current", mainDocument: "main.tex", path: "/current/.oleafly/build/report.html", builtAt: 1 };
     mocks.htmlOutput = page;
-    mocks.files = { engine: { id: "quarto", label: "Quarto", notebook_output: "html" } };
+    mocks.files = { engine: { id: "quarto", label: "Quarto", notebook_output: "html" }, tree: [] };
     let cleanup = await startPreviewWorkspaceBridge();
     mocks.handlers.get("preview:command")?.({ payload: { projectId: "current", action: "ready" } });
-    expect(mocks.emitTo).toHaveBeenLastCalledWith("preview", "preview:workspace", expect.objectContaining({ htmlOutput: page }));
+    expect(mocks.emitTo).toHaveBeenLastCalledWith(
+      "preview",
+      "preview:workspace",
+      expect.objectContaining({ htmlOutput: page, pageSavable: true }),
+    );
+    cleanup();
+    mocks.files = { ...mocks.files, tree: [{ path: "_quarto.yml", is_dir: false }] };
+    cleanup = await startPreviewWorkspaceBridge();
+    mocks.handlers.get("preview:command")?.({ payload: { projectId: "current", action: "ready" } });
+    expect(mocks.emitTo).toHaveBeenLastCalledWith(
+      "preview",
+      "preview:workspace",
+      expect.objectContaining({ htmlOutput: page, pageSavable: false }),
+    );
     cleanup();
     mocks.htmlOutput = { ...page, projectId: "other" };
     cleanup = await startPreviewWorkspaceBridge();
@@ -394,6 +409,19 @@ describe("detached compile commands", () => {
     expect(mocks.logError).toHaveBeenCalledWith("preview command refresh-files", expect.any(Error));
     expect(mocks.errorUnique).not.toHaveBeenCalled();
     expect(mocks.notifyError).not.toHaveBeenCalled();
+    cleanup();
+  });
+
+  it("exports the web page the detached window shows, and nothing else", async () => {
+    mocks.htmlOutput = { projectId: "current", mainDocument: "notes/page.qmd", path: "/build/page.html", builtAt: 1 };
+    const cleanup = await startPreviewWorkspaceBridge();
+    const command = (payload: unknown) => mocks.handlers.get("preview:command")?.({ payload });
+    command({ projectId: "current", action: "export-page-pdf", mainDocument: "other.qmd" });
+    command({ projectId: "current", action: "export-page-pdf" });
+    command({ projectId: "current", action: "export-page-pdf", mainDocument: "notes/page.qmd" });
+    await vi.waitFor(() => expect(mocks.exportCurrentDocument).toHaveBeenCalledOnce());
+    expect(mocks.exportCurrentDocument).toHaveBeenCalledWith("pdf", "notes/page.qmd");
+    expect(mocks.setFocus).toHaveBeenCalledOnce();
     cleanup();
   });
 

@@ -102,9 +102,15 @@
     "useTypst": "Använd Typst {{version}}",
     "installTool": "Installera {{tool}} {{version}}",
     "installToolSize": "Installera {{tool}} {{version}} ({{size}})",
+    "installPackage": "Installera {{name}}",
+    "checkAgain": "Kontrollera igen",
     "engineSettings": "Öppna motorinställningar",
     "useTectonic": "Använd Tectonic",
-    "useTectonicForEveryone": "Använd Tectonic för alla"
+    "useTectonicForEveryone": "Använd Tectonic för alla",
+    "saveHtml": "Spara HTML i projektet",
+    "downloadPageAsPdf": "Ladda ner den visade sidan som PDF",
+    "copyPath": "Kopiera utdatasökvägen",
+    "invertPage": "Invertera webbsidans färger"
   },
   "html": {
     "building": "Bygger webbsidan",
@@ -132,10 +138,14 @@
     "namePlaceholder": "dokument.pdf",
     "imageSaved": "Bilden sparades i projektet.",
     "pdfSaved": "PDF:en sparades i projektet.",
-    "failed": "Det gick inte att spara i projektet."
+    "failed": "Det gick inte att spara i projektet.",
+    "htmlDescription": "Sparar den visade webbsidan i projektträdet som en enda HTML-fil.",
+    "htmlPlaceholder": "dokument.html",
+    "htmlSaved": "Webbsidan sparades i projektet."
   },
   "sync": {
     "toggle": "Synkronisera PDF vid kompilering",
+    "toggleHtml": "Synkronisera HTML vid kompilering",
     "failed": "Det gick inte att uppdatera {{name}}. Oleafly försöker igen vid nästa kompilering.",
     "fastMode": "Snabba kompileringar uppdaterar inte den här PDF-filen.",
     "localOnly": "Den här kopian stannar på den här datorn."
@@ -153,7 +163,8 @@
   },
   "empty": {
     "compileUnavailable": "PDF-kompilering är inte tillgänglig just nu.",
-    "compileFailed": "Kompileringen misslyckades. Öppna fliken Loggar för att se vad som gick fel."
+    "compileFailed": "Kompileringen misslyckades. Öppna fliken Loggar för att se vad som gick fel.",
+    "notCompiled": "{{name}} har inte kompilerats än."
   },
   "a11y": {
     "stale": "Inaktuell PDF. {{explanation}}",

@@ -325,7 +325,15 @@
     "notChecked": "未檢查",
     "dictionaryMissing": "{{name}} 尚未下載，因此不會檢查拼字。請在設定中下載，或選擇其他語言。",
     "grammarEnglishOnly": "文法檢查僅適用於英文文件。",
-    "spellLanguageNotDownloaded": "{{name}}（未下載）"
+    "spellLanguageNotDownloaded": "{{name}}（未下載）",
+    "code": {
+      "title": "Code on this computer",
+      "run": "Run this project's code when compiling",
+      "hint": "R, Python and Julia chunks and LaTeX shell commands run with your permissions. Oleafly keeps this choice until you turn it off here.",
+      "restrictedHint": "Trust this folder first. Code never runs in a folder you haven't trusted.",
+      "trust": "Trust this folder",
+      "stopTrusting": "Stop trusting this folder"
+    }
   },
   "table": {
     "trigger": "插入表格",

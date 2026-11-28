@@ -100,7 +100,9 @@ test("a LaTeX paper compiles its Markdown notes with Pandoc while they are open"
   await expectCompiledPdfContains(page, "PAPERFORMATMARK");
 
   await openInEditor(page, "notes/meeting.md");
-  await expect(page.locator('[data-testid="tex-root-indicator"]')).toBeVisible({ timeout: 10_000 });
+  await expect.poll(async () => page.evaluate<string>(
+    `import("/src/lib/tex-root.ts").then(({ resolveCompileTarget }) => resolveCompileTarget().mainDoc)`,
+  ), { timeout: 15_000 }).toBe("notes/meeting.md");
   await compileAndWait(page);
   await expectCompiledPdfContains(page, "NOTESFORMATMARK");
   const during = await openedState(page);

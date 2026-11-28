@@ -83,6 +83,7 @@ import { useZenStore } from "@/store/zen";
 import { exitZenMode } from "@/lib/zen-mode";
 import {
   automaticCompileAllowed,
+  opensWithoutRunningCode,
   openCompileHydrated,
   type OpenCompileRetries,
   resetOpenCompileMarker,
@@ -278,6 +279,9 @@ const CopyIntoLibraryDialog = lazy(() =>
   import("@/components/library/CopyIntoLibraryDialog").then((m) => ({ default: m.CopyIntoLibraryDialog })), { warm: true });
 const QuickActionOffer = lazy(() =>
   import("@/components/layout/QuickActionOffer").then((m) => ({ default: m.QuickActionOffer })),
+);
+const DefaultAppsOffer = lazy(() =>
+  import("@/components/layout/DefaultAppsOffer").then((m) => ({ default: m.DefaultAppsOffer })),
 );
 const CodeExecutionBanner = lazy(() =>
   import("@/components/layout/CodeExecutionBanner").then((m) => ({ default: m.CodeExecutionBanner })),
@@ -614,7 +618,13 @@ function AppContent() {
 
   useEffect(() => {
     const id = window.setTimeout(() => checkForUpdatesOnStartup(), 3000);
-    return () => window.clearTimeout(id);
+    const offer = window.setTimeout(() => {
+      void import("@/features/default-apps-offer").then((module) => module.offerDefaultAppsOnce());
+    }, 4000);
+    return () => {
+      window.clearTimeout(id);
+      window.clearTimeout(offer);
+    };
   }, []);
 
   const native = isTauri();
@@ -978,6 +988,9 @@ function AppContent() {
           <Contained resetKey={homePage}>
             <QuickActionOffer />
           </Contained>
+          <Contained>
+            <DefaultAppsOffer />
+          </Contained>
         </LazyModals>
         <Contained resetKey={aboutOpen} close={() => setAboutOpen(false)}>
           <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
@@ -1141,6 +1154,9 @@ function AppContent() {
           <Contained resetKey={projectId}>
             <QuickActionOffer />
           </Contained>
+          <Contained>
+            <DefaultAppsOffer />
+          </Contained>
         </LazyModals>
         <Contained resetKey={aboutOpen} close={() => setAboutOpen(false)}>
           <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
@@ -1262,6 +1278,10 @@ function OpenCompileKeeper() {
 
     const requestedProjectId = projectId;
     if (!requestedProjectId) return;
+    if (opensWithoutRunningCode(useFilesStore.getState().engine, useCompileStore.getState().autoCompile)) {
+      openCompiledRef.current = requestedProjectId;
+      return;
+    }
     const requestedMainDocument = mainDocument;
     const requestedProjectRevision = analysisProjectRevision;
     openCompileInFlightRef.current = requestedProjectId;

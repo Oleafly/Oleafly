@@ -148,6 +148,7 @@
       "specialFile": "Non è un file normale",
       "tooLarge": "Troppo grande per essere sincronizzato",
       "packageFolder": "Pacchetti installati che puoi reinstallare",
+      "privateFile": "File di sessione R che può contenere password o chiavi",
       "zipLeftovers": "Residuo di una decompressione",
       "unreadable": "Lettura non riuscita",
       "downloadFailed": "Download non riuscito",

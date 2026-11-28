@@ -58,7 +58,7 @@
     },
     "trustFolder": {
       "title": "Bu klasöre güvenilsin mi?",
-      "message": "Oleafly, {{name}} için Git'i, terminali, ajanları ve LaTeX araçlarını açacak. Yalnızca içeriğini bildiğiniz klasörlere güvenin.",
+      "message": "Oleafly, {{name}} için Git'i, terminali, ajanları, latexmk'yi ve Quarto'yu açacak. Klasördeki kod yalnızca siz izin verdikten sonra çalışır. Yalnızca içeriğini bildiğiniz klasörlere güvenin.",
       "messageParent": "Oleafly, {{name}} klasörüne ve içindeki her klasöre, daha sonra açtıklarınız dahil, güvenecek.",
       "messageRepository": "Oleafly, {{name}} içinde Git'i deponun kendi ayarları ve kancalarıyla çalıştıracak.",
       "confirm": "Güven"

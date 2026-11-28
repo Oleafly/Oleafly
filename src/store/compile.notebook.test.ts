@@ -305,9 +305,21 @@ describe("a compile that writes a web page", () => {
     expect(useCompileStore.getState().htmlOutput).toBeNull();
   });
 
-  it("forgets the page when a compile fails without writing one, so the failure shows", async () => {
+  it("keeps the last good page of the same document when a compile fails", async () => {
     mocks.compileProject.mockResolvedValue(htmlResult());
     await useCompileStore.getState().recompile();
+    const shown = useCompileStore.getState().htmlOutput;
+    mocks.compileProject.mockResolvedValue({ ...htmlResult(), ok: false, html_output: null });
+    await useCompileStore.getState().recompile();
+    expect(useCompileStore.getState().status).toBe("error");
+    expect(useCompileStore.getState().htmlOutput).toEqual(shown);
+  });
+
+  it("drops the page when a failed compile was for another document", async () => {
+    mocks.compileProject.mockResolvedValue(htmlResult());
+    await useCompileStore.getState().recompile();
+    const shown = useCompileStore.getState().htmlOutput;
+    useCompileStore.setState({ htmlOutput: shown && { ...shown, mainDocument: "other.qmd" } });
     mocks.compileProject.mockResolvedValue({ ...htmlResult(), ok: false, html_output: null });
     await useCompileStore.getState().recompile();
     expect(useCompileStore.getState().status).toBe("error");
@@ -331,7 +343,7 @@ describe("a compile that needs code to run", () => {
     const state = useCompileStore.getState();
     expect(state.status).toBe("error");
     expect(state.errors).toEqual([
-      { kind: "error", code: "notebook.code_needed", message, line: null, file: null, explanation: null },
+      { kind: "error", code: "notebook.code_needed", message, params: { engine: "Quarto" }, line: null, file: null, explanation: null },
     ]);
     expect(state.failureReason).toBe(message);
     expect(state.log).toContain(message);

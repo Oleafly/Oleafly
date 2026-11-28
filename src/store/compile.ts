@@ -97,9 +97,10 @@ import {
 } from "@/store/project-index";
 import { resolveCompileTarget } from "@/lib/tex-root";
 import { readStoredFlag, storeFlag } from "@/lib/stored-flag";
-import { mainDocumentMissing } from "@/lib/main-document";
-import { compiledHtmlOutput, notebookOutput } from "@/lib/notebook-engines";
+import { documentFamily, mainDocumentMissing } from "@/lib/main-document";
+import { compiledHtmlOutput, isNotebookEngine, notebookOutput } from "@/lib/notebook-engines";
 import type { NotebookTool } from "@/lib/notebook-commands";
+import { runtimeNeedFor, type RuntimeNeed } from "@/lib/runtime-needs";
 
 let compileSeq = 0;
 let rerunQueued = false;
@@ -128,8 +129,18 @@ const NEARLY_DONE_SHARE = 0.75;
 let runningOrigin: CompileOrigin | null = null;
 let runningSnapshotAt = 0;
 let runningIsRestart = false;
+let runningRunsNotebook = false;
 let nextIsRestart = false;
 let outdatedStopRequested = false;
+let userStops = 0;
+
+export function userStopCount(): number {
+  return userStops;
+}
+
+export function automaticCompileStillWanted(editedAt: number, stopsAtEdit: number): boolean {
+  return userStops === stopsAtEdit && runningSnapshotAt < editedAt;
+}
 
 function forgetOutdatedStops(): void {
   runningOrigin = null;
@@ -218,15 +229,15 @@ export function isCompileGenerationCurrent(identity: CompileRequestIdentity): bo
   );
 }
 
+const storedMainAtRequest = new WeakMap<CompileRequestIdentity, string>();
+
 export function isCompileOutputStillWanted(
   identity: CompileRequestIdentity,
 ): boolean {
-  const files = useFilesStore.getState();
-  return (
-    files.projectId === identity.projectId &&
-    resolveCompileTarget().mainDoc === identity.mainDocument &&
-    compileIntentGeneration === identity.requestGeneration
-  );
+  if (!isCompileGenerationCurrent(identity)) return false;
+  if (resolveCompileTarget().mainDoc === identity.mainDocument) return true;
+  const storedMain = storedMainAtRequest.get(identity);
+  return storedMain !== undefined && storedMain === useFilesStore.getState().mainDoc;
 }
 
 function currentSourcePaths(projectId: string): string[] | null {
@@ -517,6 +528,7 @@ export type CompileOrigin = "explicit" | "agent" | "automatic";
 
 export interface RecompileOptions {
   readonly fromScratch?: boolean;
+  readonly wholeProject?: boolean;
   readonly origin?: CompileOrigin;
 }
 
@@ -555,6 +567,11 @@ export type CompileOffer =
       readonly projectId: string;
       readonly compiler: TexFlavor;
       readonly label: string;
+    }
+  | {
+      readonly kind: "notebook-runtime";
+      readonly projectId: string;
+      readonly need: RuntimeNeed;
     };
 
 const TYPST_VERSION_MISSING = "typst_version_missing";
@@ -1020,6 +1037,8 @@ export function acceptCompileOffer(offer: CompileOffer): void {
     installOfferedPackages(offer.projectId, offer.packages, tlmgrInstall);
   } else if (offer.kind === "switch-compiler") {
     void switchEngineAndRecompile(offer.projectId, "latexmk", offer.compiler);
+  } else if (offer.kind === "notebook-runtime") {
+    void import("@/features/runtime-setup").then((module) => module.acceptRuntimeNeed(offer.projectId, offer.need));
   } else {
     installOfferedPackages(offer.projectId, offer.packages);
   }
@@ -1271,6 +1290,7 @@ export function stopOutdatedAutomaticCompile(editedAt: number, now = Date.now())
   const { status, phase, compileTimeMs } = useCompileStore.getState();
   if (status !== "compiling" || phase !== "building") return false;
   if (runningOrigin !== "automatic" || runningIsRestart || outdatedStopRequested) return false;
+  if (runningRunsNotebook) return false;
   if (runningSnapshotAt >= editedAt) return false;
   if (compileTimeMs && now - runningSnapshotAt >= compileTimeMs * NEARLY_DONE_SHARE) return false;
   outdatedStopRequested = true;
@@ -1952,6 +1972,13 @@ function settleAlreadyShownOutput(
   return true;
 }
 
+function keptHtmlOutput(
+  shown: CompiledHtmlOutput | null,
+  ctx: Pick<CompileApplyContext, "projectId" | "mainDoc">,
+): CompiledHtmlOutput | null {
+  return shown?.projectId === ctx.projectId && shown.mainDocument === ctx.mainDoc ? shown : null;
+}
+
 async function applyHtmlCompileResult(
   ctx: CompileApplyContext,
   result: CompileResult,
@@ -2037,7 +2064,7 @@ async function applyCompileResult(
       lastCompileCheckpoint: checkpoint ?? state.lastCompileCheckpoint,
       compiledSources: checkpoint ? ctx.compiledSourceSnapshot : state.compiledSources,
       compileTimeMs: checkpoint ? (result.compile_time_ms ?? 0) : state.compileTimeMs,
-      htmlOutput: null,
+      htmlOutput: checkpoint ? null : keptHtmlOutput(state.htmlOutput, ctx),
     };
   });
   if (!applied) return result;
@@ -2049,6 +2076,7 @@ async function applyCompileResult(
   } else {
     maybeOfferEngineChoice(ctx, result.log, result.errors, opening);
     maybeOfferTexSetup(ctx, result.errors);
+    maybeOfferRuntimeSetup(ctx, result.errors);
     maybeOfferCompilerSwitch(ctx, result.errors);
     maybeSuggestMissingPackages(ctx, result.log);
   }
@@ -2256,6 +2284,11 @@ function maybeOfferTexSetup(ctx: CompileApplyContext, errors: readonly CompileEr
   }
 }
 
+function maybeOfferRuntimeSetup(ctx: CompileApplyContext, errors: readonly CompileError[]): void {
+  const need = runtimeNeedFor(errors, ctx.engine.allow_shell_escape);
+  if (need) offerForAttempt(ctx, { kind: "notebook-runtime", projectId: ctx.projectId, need });
+}
+
 function maybeOfferCompilerSwitch(ctx: CompileApplyContext, errors: readonly CompileError[]): void {
   if (ctx.crossFormat) return;
   const params = errors.find((error) => error.code === UNICODE_ENGINE_CODE)?.params;
@@ -2270,9 +2303,13 @@ function maybeOfferCompilerSwitch(ctx: CompileApplyContext, errors: readonly Com
   }
 }
 
-function codeNeededErrors(code: string | undefined, message: string): CompileError[] | null {
+function codeNeededErrors(
+  code: string | undefined,
+  message: string,
+  params: Record<string, string> = {},
+): CompileError[] | null {
   if (code !== NOTEBOOK_CODE_NEEDED) return null;
-  return [{ kind: "error", code, message, line: null, file: null, explanation: null }];
+  return [{ kind: "error", code, message, params, line: null, file: null, explanation: null }];
 }
 
 function maybeOfferJapaneseSupport(ctx: CompileApplyContext, code: string, names: string | undefined): void {
@@ -2300,7 +2337,7 @@ function handleCompileException(ctx: CompileApplyContext, e: unknown): void {
     return;
   }
   const message = appError ? describeError(e) : String(e);
-  const codeNeeded = codeNeededErrors(appError?.code, message);
+  const codeNeeded = codeNeededErrors(appError?.code, message, appError?.params);
   const failedWithReason = i18n.t(($) => $.core.compile.failedWithReason, { message });
   ctx.set((state) => {
     if (
@@ -2419,6 +2456,7 @@ export const useCompileStore = create<CompileState>((set, get) => ({
     set({ stopOnFirstError: stop });
   },
   stopCompile: async () => {
+    userStops++;
     clearQueuedRerun();
     try {
       await cancelCompile();
@@ -2580,13 +2618,16 @@ export const useCompileStore = create<CompileState>((set, get) => ({
       mainDoc,
       intent,
     );
+    storedMainAtRequest.set(requestIdentity, useFilesStore.getState().mainDoc);
+    const captureStartedAt = Date.now();
     const captured = await captureSnapshotIfCurrent(projectId, requestIdentity);
     if (captured === null) {
       abortIntent();
       return undefined;
     }
     runningOrigin = origin;
-    runningSnapshotAt = Date.now();
+    runningRunsNotebook = isNotebookEngine(engine) || documentFamily(mainDoc) === "quarto";
+    runningSnapshotAt = captureStartedAt;
     runningIsRestart = nextIsRestart;
     nextIsRestart = false;
     outdatedStopRequested = false;
@@ -2643,6 +2684,7 @@ export const useCompileStore = create<CompileState>((set, get) => ({
     try {
       return await withEventListener("compile:log", (chunk: string) => logPump.push(chunk), async () => {
         if (identityStale() || checkpointAdvanced()) return undefined;
+        const wholeProject = options?.wholeProject === true ? ([true] as const) : ([] as const);
         const compileOnce = () =>
           compileProject(
             projectId,
@@ -2651,6 +2693,7 @@ export const useCompileStore = create<CompileState>((set, get) => ({
             get().compileMode === "fast",
             get().stopOnFirstError,
             activeTypstVariant(projectId, engine),
+            ...wholeProject,
           );
         const result = !crossFormat && livePreviewRoutes(get(), useFilesStore.getState(), projectId)
           ? await compileThroughLivePreview(

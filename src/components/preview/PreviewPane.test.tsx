@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useCompileStore } from "@/store/compile";
 import { useFilesStore } from "@/store/files";
@@ -188,6 +188,24 @@ describe("PreviewPane empty state", () => {
 
     render(<PreviewPane />);
     expect(screen.queryByTestId("mock-pdf-viewer")).not.toBeInTheDocument();
+  });
+
+  it("offers to compile a file that became the target instead of waiting for a build", () => {
+    useCompileStore.setState({
+      status: "success",
+      lastAttemptIdentity: {
+        projectId: "preview-empty-fixture",
+        mainDocument: "chapter.tex",
+        projectRevision: 2,
+        requestGeneration: 1,
+      },
+    } as never);
+
+    render(<PreviewPane />);
+    const unbuilt = screen.getByTestId("preview-target-unbuilt");
+    expect(unbuilt).toHaveTextContent("main.tex");
+    fireEvent.click(within(unbuilt).getByRole("button"));
+    expect(recompile).toHaveBeenCalledOnce();
   });
 });
 

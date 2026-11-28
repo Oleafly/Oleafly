@@ -29,6 +29,7 @@ const registry: Record<string, () => Promise<unknown>> = !E2E_HOOKS ? {} : {
   "/src/lib/proofreading/hunspell.ts": () => import("@/lib/proofreading/hunspell"),
   "/src/lib/research-tasks.ts": () => import("@/lib/research-tasks"),
   "/src/lib/tauri.ts": () => import("@/lib/tauri"),
+  "/src/lib/tex-root.ts": () => import("@/lib/tex-root"),
   "/src/lib/tauri-collab.ts": () => import("@/lib/tauri-collab"),
   "/src/lib/typst-universe.ts": () => import("@/lib/typst-universe"),
   "/src/lib/wordcount.ts": () => import("@/lib/wordcount"),

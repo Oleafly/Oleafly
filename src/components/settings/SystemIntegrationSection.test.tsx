@@ -70,6 +70,73 @@ beforeEach(() => {
 });
 
 describe("SystemIntegrationSection", () => {
+
+  it("shows a Make default row per file type on macOS and asks the user to answer macOS", async () => {
+    mocks.status
+      .mockResolvedValueOnce(
+        status("macos", [
+          item("default_latex", "installed"),
+          item("default_typst", "needs_attention", { attention: "no_file_type" }),
+          item("default_markdown", "not_installed"),
+          item("default_quarto", "not_installed"),
+        ]),
+      )
+      .mockResolvedValue(
+        status("macos", [
+          item("default_latex", "installed"),
+          item("default_typst", "needs_attention", { attention: "no_file_type" }),
+          item("default_markdown", "installed"),
+          item("default_quarto", "not_installed"),
+        ]),
+      );
+    mocks.set.mockResolvedValue(item("default_markdown", "not_installed"));
+    render(<SystemIntegrationSection />);
+    const latex = await screen.findByTestId("system-integration-default_latex");
+    expect(within(latex).getByText(copy.defaultAppState.installed)).toBeInTheDocument();
+    expect(within(latex).queryByRole("button")).toBeNull();
+    const typst = screen.getByTestId("system-integration-default_typst");
+    expect(within(typst).getByText(copy.defaultAppState.needsAttention)).toBeInTheDocument();
+    expect(within(typst).getByText(copy.attention.noFileType)).toBeInTheDocument();
+    expect(within(typst).queryByRole("button")).toBeNull();
+    const markdown = screen.getByTestId("system-integration-default_markdown");
+    expect(within(markdown).getByText(copy.defaultMarkdown.label)).toBeInTheDocument();
+    expect(within(markdown).getByText(copy.defaultAppState.notInstalled)).toBeInTheDocument();
+
+    await userEvent.setup().click(within(markdown).getByRole("button", { name: copy.actions.makeDefault }));
+    expect(mocks.set).toHaveBeenCalledWith("default_markdown", true);
+    expect(within(markdown).getByText(copy.defaultAppConfirm.macos)).toBeInTheDocument();
+
+    act(() => {
+      window.dispatchEvent(new Event("focus"));
+    });
+    await waitFor(() =>
+      expect(within(screen.getByTestId("system-integration-default_markdown")).getByText(copy.defaultAppState.installed)).toBeInTheDocument(),
+    );
+    expect(screen.queryByText(copy.defaultAppConfirm.macos)).toBeNull();
+  });
+
+  it("opens Windows Settings from Make default and says where to pick Oleafly", async () => {
+    mocks.status.mockResolvedValue(status("windows", [item("default_quarto", "not_installed")]));
+    mocks.set.mockResolvedValue(item("default_quarto", "not_installed"));
+    render(<SystemIntegrationSection />);
+    const row = await screen.findByTestId("system-integration-default_quarto");
+    await userEvent.setup().click(within(row).getByRole("button", { name: copy.actions.makeDefault }));
+    expect(mocks.set).toHaveBeenCalledWith("default_quarto", true);
+    expect(within(row).getByText(copy.defaultAppConfirm.windows)).toBeInTheDocument();
+  });
+
+  it("lets Linux hand a file type back, and explains a failed change in the row", async () => {
+    mocks.status.mockResolvedValue(status("linux", [item("default_latex", "installed")]));
+    mocks.set.mockRejectedValueOnce(new Error("read-only")).mockResolvedValueOnce(item("default_latex", "not_installed"));
+    render(<SystemIntegrationSection />);
+    const row = await screen.findByTestId("system-integration-default_latex");
+    const user = userEvent.setup();
+    await user.click(within(row).getByRole("button", { name: copy.actions.stopDefault }));
+    expect(within(row).getByRole("alert")).toHaveTextContent(copy.failed.defaultApp);
+    await user.click(within(row).getByRole("button", { name: copy.actions.stopDefault }));
+    expect(mocks.set).toHaveBeenLastCalledWith("default_latex", false);
+    expect(within(row).getByRole("button", { name: copy.actions.makeDefault })).toBeInTheDocument();
+  });
   it("installs the Finder Quick Action on macOS and then offers to remove it", async () => {
     mocks.status.mockResolvedValue(status("macos", [item("quick_action", "not_installed")]));
     mocks.set.mockResolvedValue(item("quick_action", "installed"));

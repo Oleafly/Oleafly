@@ -33,6 +33,18 @@ const NOTEBOOK_FIGURES_SUFFIX: &str = "_files";
 const NOTEBOOK_SOURCE_EXTENSIONS: [&str; 3] = ["qmd", "Rmd", "rmd"];
 const QUARTO_STATE_DIRECTORIES: [&str; 2] = ["_extensions", "_freeze"];
 const QUARTO_OUTPUT_DIRECTORIES: [&str; 3] = ["_book", "_site", "_manuscript"];
+const NOTEBOOK_CACHE_SUFFIX: &str = "_cache";
+const ENVIRONMENT_FOLDERS: [&str; 1] = [".venv"];
+const CACHE_FOLDERS: [&str; 5] = [
+    "__pycache__",
+    ".ipynb_checkpoints",
+    ".jupyter_cache",
+    ".virtual_documents",
+    ".Rproj.user",
+];
+const ENVIRONMENT_MARKERS: [&str; 2] = ["pyvenv.cfg", "conda-meta/history"];
+const RENV_LIBRARIES: [&str; 6] = ["library", "local", "staging", "python", "sandbox", "cellar"];
+const R_SESSION_FILES: [&str; 4] = [".Renviron", ".Rhistory", ".RData", ".Ruserdata"];
 
 pub fn new_repository_exclude_lines() -> impl Iterator<Item = &'static str> {
     [
@@ -147,6 +159,71 @@ pub fn is_notebook_render(relative_path: &str, has_sibling: impl Fn(&str) -> boo
             .any(|notebook| has_sibling(&format!("{stem}.{notebook}")))
 }
 
+pub fn is_private_session_file(name: &str) -> bool {
+    R_SESSION_FILES
+        .iter()
+        .any(|file| name.eq_ignore_ascii_case(file))
+}
+
+fn in_folder(folder: Option<&str>, name: &str) -> String {
+    match folder {
+        Some(folder) => format!("{folder}/{name}"),
+        None => name.to_owned(),
+    }
+}
+
+pub fn is_environment_folder(relative_path: &str, has_sibling: impl Fn(&str) -> bool) -> bool {
+    let normalized = relative_path.replace('\\', "/");
+    let normalized = normalized.trim_matches('/');
+    let (parent, name) = match normalized.rsplit_once('/') {
+        Some((parent, name)) => (Some(parent), name),
+        None => (None, normalized),
+    };
+    if name.is_empty() {
+        return false;
+    }
+    let in_renv = parent
+        .and_then(|parent| parent.rsplit('/').next())
+        .is_some_and(|folder| folder.eq_ignore_ascii_case("renv"));
+    ENVIRONMENT_FOLDERS
+        .iter()
+        .any(|folder| name.eq_ignore_ascii_case(folder))
+        || (in_renv
+            && RENV_LIBRARIES
+                .iter()
+                .any(|library| name.eq_ignore_ascii_case(library)))
+        || ENVIRONMENT_MARKERS
+            .iter()
+            .any(|marker| has_sibling(&format!("{normalized}/{marker}")))
+}
+
+fn is_generated_output_folder(relative_path: &str, has_sibling: impl Fn(&str) -> bool) -> bool {
+    let normalized = relative_path.replace('\\', "/");
+    let normalized = normalized.trim_matches('/');
+    let (parent, name) = match normalized.rsplit_once('/') {
+        Some((parent, name)) => (Some(parent), name),
+        None => (None, normalized),
+    };
+    let notebook_cache = name
+        .strip_suffix(NOTEBOOK_CACHE_SUFFIX)
+        .filter(|stem| !stem.is_empty())
+        .is_some_and(|stem| {
+            NOTEBOOK_SOURCE_EXTENSIONS
+                .iter()
+                .any(|extension| has_sibling(&in_folder(parent, &format!("{stem}.{extension}"))))
+        });
+    notebook_cache
+        || CACHE_FOLDERS
+            .iter()
+            .any(|folder| name.eq_ignore_ascii_case(folder))
+        || (QUARTO_OUTPUT_DIRECTORIES
+            .iter()
+            .any(|output| name.eq_ignore_ascii_case(output))
+            && crate::QUARTO_PROJECT_FILES
+                .iter()
+                .any(|config| has_sibling(&in_folder(parent, config))))
+}
+
 pub fn is_generated_folder(relative_path: &str, has_sibling: impl Fn(&str) -> bool) -> bool {
     let normalized = relative_path.replace('\\', "/");
     let name = normalized
@@ -154,7 +231,10 @@ pub fn is_generated_folder(relative_path: &str, has_sibling: impl Fn(&str) -> bo
         .rsplit('/')
         .next()
         .unwrap_or_default();
-    is_engine_state_directory(name) || is_notebook_figures_folder(&normalized, has_sibling)
+    is_engine_state_directory(name)
+        || is_notebook_figures_folder(&normalized, &has_sibling)
+        || is_environment_folder(&normalized, &has_sibling)
+        || is_generated_output_folder(&normalized, &has_sibling)
 }
 
 pub fn is_capture_excluded_component(component: &str) -> bool {
@@ -162,6 +242,10 @@ pub fn is_capture_excluded_component(component: &str) -> bool {
         .iter()
         .any(|name| component.eq_ignore_ascii_case(name))
         || is_engine_state_directory(component)
+        || ENVIRONMENT_FOLDERS
+            .iter()
+            .chain(CACHE_FOLDERS.iter())
+            .any(|folder| component.eq_ignore_ascii_case(folder))
     {
         return true;
     }
@@ -269,6 +353,7 @@ pub struct PolicyFields<'a> {
 pub enum SkipReason {
     BuildOutput,
     Reinstallable,
+    Private,
     ZipLeftovers,
     Symlink,
     SpecialFile,
@@ -376,7 +461,7 @@ fn skipped_by_default(
     if entry.git_tracked || listed(fields.sync_include, portable) {
         return None;
     }
-    if is_build_output(components, portable, entry, fields, has_sibling) {
+    if is_build_output(components, portable, entry, fields, &has_sibling) {
         return Some(SkipReason::BuildOutput);
     }
     if components
@@ -384,6 +469,23 @@ fn skipped_by_default(
         .any(|part| part.eq_ignore_ascii_case("node_modules"))
     {
         return Some(SkipReason::Reinstallable);
+    }
+    let folders = if entry.kind == EntryKind::Directory {
+        components.len()
+    } else {
+        components.len() - 1
+    };
+    for end in 1..=folders {
+        let folder = components[..end].join("/");
+        if is_environment_folder(&folder, &has_sibling) {
+            return Some(SkipReason::Reinstallable);
+        }
+        if is_generated_output_folder(&folder, &has_sibling) {
+            return Some(SkipReason::BuildOutput);
+        }
+    }
+    if entry.kind == EntryKind::File && is_private_session_file(components[components.len() - 1]) {
+        return Some(SkipReason::Private);
     }
     if components
         .iter()
@@ -467,6 +569,70 @@ mod tests {
 
     fn file(path: &str) -> Decision {
         decide(Path::new(path), &EntryInfo::file(10), &fields())
+    }
+
+    fn file_beside(path: &str, siblings: &[&str]) -> Decision {
+        decide_with_siblings(
+            Path::new(path),
+            &EntryInfo::file(10),
+            &fields(),
+            |sibling| siblings.contains(&sibling),
+        )
+    }
+
+    #[test]
+    fn environments_caches_and_notebook_outputs_stay_out_of_sync_and_sharing() {
+        let reinstall = Decision::Skip(SkipReason::Reinstallable);
+        let output = Decision::Skip(SkipReason::BuildOutput);
+        assert_eq!(
+            file(".venv/lib/python3.12/site-packages/numpy/__init__.py"),
+            reinstall
+        );
+        assert_eq!(
+            file_beside("env/bin/python", &["env/pyvenv.cfg"]),
+            reinstall
+        );
+        assert_eq!(
+            file_beside("envs/thesis/lib/x.py", &["envs/thesis/conda-meta/history"]),
+            reinstall
+        );
+        assert_eq!(file("env/notes.md"), Decision::Include);
+        assert_eq!(
+            file("renv/library/R-4.6/aarch64/knitr/DESCRIPTION"),
+            reinstall
+        );
+        assert_eq!(file("renv/activate.R"), Decision::Include);
+        assert_eq!(file("renv.lock"), Decision::Include);
+        assert_eq!(file("scripts/__pycache__/fit.cpython-312.pyc"), output);
+        assert_eq!(file(".Rproj.user/shared/notebooks/x"), output);
+        assert_eq!(
+            file_beside("analysis_cache/html/chunk.rdb", &["analysis.Rmd"]),
+            output
+        );
+        assert_eq!(file("analysis_cache/html/chunk.rdb"), Decision::Include);
+        assert_eq!(file_beside("_book/index.html", &["_quarto.yml"]), output);
+        assert_eq!(
+            file_beside("site/_site/index.html", &["site/_quarto.yaml"]),
+            output
+        );
+        assert_eq!(file("_book/index.html"), Decision::Include);
+        assert_eq!(
+            file("_freeze/index/execute-results/html.json"),
+            Decision::Include
+        );
+        for private in [".Renviron", ".Rhistory", "analysis/.RData", ".Ruserdata"] {
+            assert_eq!(
+                file(private),
+                Decision::Skip(SkipReason::Private),
+                "{private}"
+            );
+        }
+        assert!(is_generated_folder("renv/library", |_| false));
+        assert!(is_generated_folder("env", |sibling| sibling == "env/pyvenv.cfg"));
+        assert!(is_generated_folder("_site", |sibling| sibling == "_quarto.yml"));
+        assert!(!is_generated_folder("renv", |_| false));
+        assert!(is_capture_excluded_component(".venv"));
+        assert!(is_capture_excluded_component("__pycache__"));
     }
 
     #[test]

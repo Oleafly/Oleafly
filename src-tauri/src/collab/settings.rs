@@ -1092,15 +1092,16 @@ mod tests {
         alice.send(&bob);
         bob.follow();
         assert_eq!(bob.meta().engine, "xetex");
-        assert!(!crate::project::shell_escape_trusted("bob-escape").unwrap());
+        assert!(!bob.meta().allow_shell_escape);
+        assert!(crate::project::shell_escape_trusted("bob-escape").unwrap());
 
         alice.change(&[(Setting::Engine, "latexmk")]);
         alice.send(&bob);
         bob.follow();
         let here = bob.meta();
         assert_eq!(here.engine, "latexmk");
-        assert!(!here.allow_shell_escape);
-        assert!(!crate::project::shell_escape_trusted("bob-escape").unwrap());
+        assert!(here.allow_shell_escape);
+        assert!(crate::project::shell_escape_trusted("bob-escape").unwrap());
         let raw = std::fs::read_to_string(bob.root.join("project.json")).unwrap();
         assert!(!raw.contains("shell_escape"), "{raw}");
         assert!(

@@ -430,7 +430,7 @@
       "off": "Av",
       "on": "På",
       "title": "Automatisk kompilering",
-      "help": "Kompilerer noen sekunder etter at du slutter å skrive. Den åpne filen lagres først.",
+      "help": "Kompilerer noen sekunder etter at du slutter å skrive, og lagrer den åpne filen først. Etter Stopp venter den på neste endring. Et prosjekt som kjører kode, kompileres bare ved åpning når dette er på.",
       "typstHelp": "Typst kjører hele tiden og oppdaterer PDF-filen like etter at du slutter å skrive. Den åpne filen lagres automatisk mens dette er på.",
       "typstStarting": "Starter Typst",
       "typstRestarting": "Typst starter på nytt",
@@ -454,6 +454,7 @@
       "title": "Håndtering av kompileringsfeil"
     },
     "fromScratch": "Kompiler på nytt fra bunnen",
+    "wholeProject": "Gjengi hele Quarto-prosjektet",
     "mode": {
       "fast": "Rask <note>[utkast]</note>",
       "normal": "Vanlig",
@@ -470,9 +471,8 @@
     },
     "texRootBroken": "% !TEX root i {{file}} peker på en fil som mangler ({{target}})",
     "texRootLabel": "TEX root",
-    "texRootName": "rot: {{name}}",
     "texRootNotTex": "% !TEX root i {{file}} peker på {{target}}, som ikke er en LaTeX-fil",
-    "texRootOverride": "rot: {{path}} (satt av % !TEX root i {{file}})",
+    "texRootOverride": "Kompilerer {{path}} (satt av % !TEX root i {{file}})",
     "typstVersion": {
       "title": "Typst-versjon (dette prosjektet)",
       "help": "Lås en versjon, så gir prosjektet det samme resultatet selv om Oleafly oppdaterer Typst. Standard følger versjonen som er valgt i Innstillinger. Gå til Innstillinger → Motorer → Typst for å installere versjoner eller teste prosjektet med en nyere.",
@@ -513,18 +513,19 @@
     },
     "code": {
       "title": "Kode (denne maskinen)",
-      "help": "Quarto og Calepin kan kjøre R-, Python- og Julia-koden i dette prosjektet. Koden kjører med dine rettigheter, så tillat det bare for et prosjekt du stoler på. Valget gjelder bare denne maskinen.",
+      "help": "Quarto og Calepin kan kjøre R-, Python- og Julia-koden i dette prosjektet. Koden kjører med dine rettigheter, så tillat den bare for et prosjekt du stoler på. Valget gjelder bare denne maskinen og står til du slår det av. Når du slår det av, stopper en kompilering som kjører.",
       "off": "Av",
       "run": "Kjør kode på denne maskinen"
     },
     "sharedViewer": "Bare eiere og redaktører kan endre disse innstillingene i et delt prosjekt.",
     "coauthorsChanged": "Endret av medforfattere siden siste kompilering",
-    "texRootDocument": "rot: {{path}} (har sin egen \\documentclass)",
-    "texRootInclude": "rot: {{path}} (inkluderer {{file}})",
-    "texRootFormat": "rot: {{path}} (et {{format}}-dokument, bygget med sin egen motor)",
+    "texRootDocument": "Kompilerer {{path}} (har sin egen \\documentclass)",
+    "texRootStandalone": "Kompilerer {{path}} (et eget dokument)",
+    "texRootInclude": "Kompilerer {{path}} (inkluderer {{file}})",
+    "texRootFormat": "Kompilerer {{path}} (et {{format}}-dokument, bygget med sin egen motor)",
     "target": {
       "title": "Kompileringsmål",
-      "help": "Med Følg den åpne filen kompileres en fil med sin egen \\documentclass for seg selv. Et kapittel eller avsnitt kompilerer dokumentet som inkluderer det. Et Markdown-, Typst- eller Quarto-dokument kompileres for seg selv med sin egen motor når prosjektet er i et annet format. Andre filer kompilerer hoveddokumentet. En % !TEX root-kommentar går alltid foran.",
+      "help": "Med Følg den åpne filen kompileres et eget dokument for seg: en LaTeX-fil med egen \\documentclass, eller en Markdown-, Typst- eller Quarto-fil som ingen andre dokumenter inkluderer. Et kapittel eller avsnitt kompilerer dokumentet som inkluderer det, og filene i et _quarto.yml-prosjekt kompileres med prosjektet. Andre filer kompilerer hoveddokumentet. En % !TEX root-kommentar vinner alltid.",
       "open": "Følg den åpne filen",
       "main": "Alltid hoveddokumentet",
       "change": "Bytt hoveddokument…"
@@ -668,7 +669,16 @@
     "followed": "{{name}} må kjøre kode, og kode kjører bare for hoveddokumentet. Gjør {{name}} til hoveddokumentet, og tillat deretter kode for det.",
     "needed": "Dette dokumentet må kjøre koden sin for å bygges, og kode er slått av for dette prosjektet. Tillat kode bare hvis du stoler på alle filene i prosjektet.",
     "skipped": "Koden i dette dokumentet ble ikke kjørt fordi kode er slått av for dette prosjektet. Tillat kode bare hvis du stoler på alle filene i prosjektet.",
-    "storedResults": "PDF-en viser koderesultater lagret fra en tidligere kjøring fordi kode er slått av for dette prosjektet. Tillat kode bare hvis du stoler på alle filene i prosjektet."
+    "storedResults": "PDF-en viser koderesultater lagret fra en tidligere kjøring fordi kode er slått av for dette prosjektet. Tillat kode bare hvis du stoler på alle filene i prosjektet.",
+    "reasons": {
+      "extensions": "Prosjektet har Quarto-utvidelser som kan kjøre programmer, så det bygges bare med kode tillatt. Tillat kode bare hvis du stoler på alle filene i prosjektet.",
+      "environment": "Prosjektet har _environment-filer som Quarto laster inn, så det bygges bare med kode tillatt. Tillat kode bare hvis du stoler på alle filene i prosjektet.",
+      "shortcode": "Dokumentet bruker en shortcode som ikke er innebygd i Quarto, og shortcodes kan kjøre programmer, så det bygges bare med kode tillatt. Tillat kode bare hvis du stoler på alle filene i prosjektet.",
+      "filter": "Dokumentet legger til et filter, og filtre kan kjøre programmer, så det bygges bare med kode tillatt. Tillat kode bare hvis du stoler på alle filene i prosjektet.",
+      "pdf_engine": "Dokumentet sender valg til PDF-motoren, som kan kjøre programmer, så det bygges bare med kode tillatt. Tillat kode bare hvis du stoler på alle filene i prosjektet.",
+      "outside": "Dokumentet leser en fil utenfor prosjektet, så det bygges bare med kode tillatt. Tillat kode bare hvis du stoler på alle filene i prosjektet.",
+      "unchecked": "Oleafly kunne ikke sjekke dokumentet for kode, så det bygges bare med kode tillatt. Tillat kode bare hvis du stoler på alle filene i prosjektet."
+    }
   },
   "typstCjkFonts": {
     "message": "Dokumentet har kinesisk, japansk eller koreansk tekst som ingen skrift på denne datamaskinen kan vise, så teksten mangler i PDF-en.",
@@ -825,7 +835,7 @@
     },
     "noMain": "Ingen hoveddokument ennå. Velg en fil og deretter Bruk som hoveddokument.",
     "trust": {
-      "banner": "Oleafly har begrenset noen funksjoner i denne mappen. Vil du stole på den og slå på Git, terminal, agenter og shell escape?",
+      "banner": "Oleafly har begrenset noen funksjoner i denne mappen. Vil du stole på den og slå på Git, terminal, agenter, latexmk og Quarto?",
       "trustFolder": "Stol på denne mappen",
       "trustParent": "Stol på den overordnede mappen",
       "trustRepository": "Stol på repositoriet",
@@ -1808,5 +1818,20 @@
       "saved": "{{name}} er lagret.",
       "missingName": "Gi kodebiten et navn."
     }
+  },
+  "defaultAppsOffer": {
+    "title": "Open your documents with Oleafly?",
+    "body": "Pick the file types that should open in Oleafly when you double-click them. Oleafly only asks once. You can change this later in Settings › General.",
+    "types": {
+      "latex": "LaTeX (.tex)",
+      "typst": "Typst (.typ)",
+      "markdown": "Markdown (.md)",
+      "quarto": "Quarto and R Markdown (.qmd, .Rmd)"
+    },
+    "use": "Use Oleafly",
+    "keep": "Keep my apps",
+    "done": "Done. These files now open in Oleafly.",
+    "doneMac": "Done. If macOS asks you to confirm a type another app opens now, choose Use Oleafly.",
+    "failed": "Some file types couldn't be changed. Try again in Settings › General."
   }
 }

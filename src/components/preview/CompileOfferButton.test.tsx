@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import enPreview from "@/i18n/locales/en/preview.json" with { type: "json" };
 import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
@@ -12,6 +12,9 @@ const actions = vi.hoisted(() => ({
   installMissingTex: vi.fn(async () => {}),
   switchToTectonic: vi.fn(async () => {}),
 }));
+
+const runtime = vi.hoisted(() => ({ acceptRuntimeNeed: vi.fn(async () => {}) }));
+vi.mock("@/features/runtime-setup", () => runtime);
 
 vi.mock("@/store/compile", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/store/compile")>()),
@@ -26,6 +29,7 @@ import { useEngineStore } from "@/store/engine";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { useTypstToolchainStore } from "@/store/typst-toolchain";
+import { useNotebookToolchainStore } from "@/store/notebook-toolchain";
 import { CompileOfferButton } from "./CompileOfferButton";
 
 const copy = enPreview.actions;
@@ -57,6 +61,54 @@ beforeEach(() => {
     ensureLoaded: vi.fn(async () => null),
   } as never);
   useEngine("latex");
+});
+
+describe("CompileOfferButton runtime setup", () => {
+  beforeEach(() => {
+    runtime.acceptRuntimeNeed.mockClear();
+    useEngine("quarto");
+    useNotebookToolchainStore.setState({
+      status: {
+        quarto: {} as never,
+        calepin: {} as never,
+        runtimes: [{ name: "r", path: null, version: null, installer: { version: "4.6.2", downloadBytes: 104_731_180 } }],
+      },
+      runtimeTasks: {},
+      awaitingInstaller: [],
+      ensureLoaded: vi.fn(async () => null),
+    } as never);
+  });
+
+  it("offers the R installer, then Check again once it is open", async () => {
+    const need = { kind: "runtime", runtime: "r" } as const;
+    useCompileStore.setState({ offer: { kind: "notebook-runtime", projectId: "paper", need } });
+    render(<CompileOfferButton placement="preview" />);
+    const button = await screen.findByTestId("preview-compile-offer");
+    expect(button).toHaveTextContent(
+      copy.installToolSize.replace("{{tool}}", "R").replace("{{version}}", "4.6.2").replace("{{size}}", "105 MB"),
+    );
+    fireEvent.click(button);
+    expect(runtime.acceptRuntimeNeed).toHaveBeenCalledWith("paper", need);
+    act(() => useNotebookToolchainStore.setState({ awaitingInstaller: ["r"] }));
+    expect(button).toHaveTextContent(copy.checkAgain);
+  });
+
+  it("names the package a document is missing", async () => {
+    useCompileStore.setState({
+      offer: { kind: "notebook-runtime", projectId: "paper", need: { kind: "packages", runtime: "python", packages: ["jupyter"] } },
+    });
+    render(<CompileOfferButton placement="log" />);
+    expect(await screen.findByTestId("log-compile-offer")).toHaveTextContent(copy.installPackage.replace("{{name}}", "Jupyter"));
+    expect(screen.getByTestId("log-compile-offer-settings")).toBeInTheDocument();
+  });
+
+  it("ignores an offer for another project", () => {
+    useCompileStore.setState({
+      offer: { kind: "notebook-runtime", projectId: "other", need: { kind: "runtime", runtime: "python" } },
+    });
+    const { container } = render(<CompileOfferButton placement="preview" />);
+    expect(container).toBeEmptyDOMElement();
+  });
 });
 
 describe("CompileOfferButton", () => {

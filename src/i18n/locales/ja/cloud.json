@@ -130,6 +130,7 @@
       "specialFile": "通常のファイルではありません",
       "tooLarge": "大きすぎて同期できません",
       "packageFolder": "再インストールできるインストール済みパッケージ",
+      "privateFile": "パスワードや鍵を含むことがある R のセッションファイル",
       "zipLeftovers": "解凍時に残ったファイル",
       "unreadable": "読み込めませんでした",
       "downloadFailed": "ダウンロードできませんでした",

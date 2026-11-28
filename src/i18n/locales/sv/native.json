@@ -58,7 +58,7 @@
     },
     "trustFolder": {
       "title": "Vill du lita på den här mappen?",
-      "message": "Oleafly slår på Git, terminalen, agenter och LaTeX-verktyg för {{name}}. Lita bara på mappar vars innehåll du känner till.",
+      "message": "Oleafly slår på Git, terminalen, agenter, latexmk och Quarto för {{name}}. Kod i mappen körs först när du tillåter det. Lita bara på mappar vars innehåll du känner till.",
       "messageParent": "Oleafly litar på {{name}} och alla mappar i den, även de du öppnar senare.",
       "messageRepository": "Oleafly kör Git i {{name}} med repositoriets egna inställningar och hooks.",
       "confirm": "Lita på"

@@ -130,6 +130,7 @@
       "specialFile": "일반 파일이 아님",
       "tooLarge": "너무 커서 동기화할 수 없음",
       "packageFolder": "다시 설치할 수 있는 설치된 패키지",
+      "privateFile": "비밀번호나 키가 들어 있을 수 있는 R 세션 파일",
       "zipLeftovers": "압축 해제 후 남은 파일",
       "unreadable": "읽지 못함",
       "downloadFailed": "다운로드하지 못함",

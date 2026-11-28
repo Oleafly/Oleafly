@@ -328,7 +328,15 @@
     "notChecked": "Ikke kontrollert",
     "dictionaryMissing": "{{name}} er ikke lastet ned, så stavingen kontrolleres ikke. Last den ned i Innstillinger, eller velg et annet språk.",
     "grammarEnglishOnly": "Grammatikkontroll fungerer bare for engelske dokumenter.",
-    "spellLanguageNotDownloaded": "{{name}} (ikke lastet ned)"
+    "spellLanguageNotDownloaded": "{{name}} (ikke lastet ned)",
+    "code": {
+      "title": "Code on this computer",
+      "run": "Run this project's code when compiling",
+      "hint": "R, Python and Julia chunks and LaTeX shell commands run with your permissions. Oleafly keeps this choice until you turn it off here.",
+      "restrictedHint": "Trust this folder first. Code never runs in a folder you haven't trusted.",
+      "trust": "Trust this folder",
+      "stopTrusting": "Stop trusting this folder"
+    }
   },
   "table": {
     "trigger": "Sett inn tabell",

@@ -87,6 +87,7 @@ impl DocumentEngine for CalepinEngine {
                         typst: None,
                         typst_packages: None,
                         typst_settings: None,
+                        whole_project: false,
                         ..options
                     },
                 );

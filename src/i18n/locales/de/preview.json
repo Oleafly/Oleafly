@@ -102,9 +102,15 @@
     "useTypst": "Typst {{version}} verwenden",
     "installTool": "{{tool}} {{version}} installieren",
     "installToolSize": "{{tool}} {{version}} installieren ({{size}})",
+    "installPackage": "{{name}} installieren",
+    "checkAgain": "Erneut prüfen",
     "engineSettings": "Engine-Einstellungen öffnen",
     "useTectonic": "Tectonic verwenden",
-    "useTectonicForEveryone": "Tectonic für alle verwenden"
+    "useTectonicForEveryone": "Tectonic für alle verwenden",
+    "saveHtml": "HTML im Projekt speichern",
+    "downloadPageAsPdf": "Angezeigte Seite als PDF herunterladen",
+    "copyPath": "Ausgabepfad kopieren",
+    "invertPage": "Farben der Webseite umkehren"
   },
   "html": {
     "building": "Webseite wird erstellt",
@@ -132,10 +138,14 @@
     "namePlaceholder": "dokument.pdf",
     "imageSaved": "Bild im Projekt gespeichert.",
     "pdfSaved": "PDF im Projekt gespeichert.",
-    "failed": "Speichern im Projekt nicht möglich."
+    "failed": "Speichern im Projekt nicht möglich.",
+    "htmlDescription": "Speichert die angezeigte Webseite als eine HTML-Datei im Projektbaum.",
+    "htmlPlaceholder": "dokument.html",
+    "htmlSaved": "Webseite im Projekt gespeichert."
   },
   "sync": {
     "toggle": "PDF beim Kompilieren synchronisieren",
+    "toggleHtml": "HTML beim Kompilieren synchronisieren",
     "failed": "{{name}} konnte nicht aktualisiert werden. Oleafly versucht es beim nächsten Kompilieren erneut.",
     "fastMode": "Schnelles Kompilieren aktualisiert dieses PDF nicht.",
     "localOnly": "Diese Kopie bleibt auf diesem Computer."
@@ -153,7 +163,8 @@
   },
   "empty": {
     "compileUnavailable": "Das Kompilieren zu PDF ist gerade nicht verfügbar.",
-    "compileFailed": "Kompilieren fehlgeschlagen. Öffnen Sie den Reiter Protokolle, um die Ursache zu sehen."
+    "compileFailed": "Kompilieren fehlgeschlagen. Öffnen Sie den Reiter Protokolle, um die Ursache zu sehen.",
+    "notCompiled": "{{name}} wurde noch nicht kompiliert."
   },
   "a11y": {
     "stale": "Veraltetes, nicht aktuelles PDF. {{explanation}}",

@@ -270,6 +270,18 @@ describe("explainCodedCompileErrors", () => {
     });
   });
 
+  it("names the missing R package or Python module when the log gave it", () => {
+    const coded = (code: string, params: Record<string, string>) => ({ ...warning(code), params });
+    const [r, python] = explainCodedCompileErrors([
+      coded("notebook.r_package_missing", { package: "data.table" }),
+      coded("notebook.python_module_missing", { module: "sklearn", package: "scikit-learn" }),
+    ]);
+    expect(r.explanation).toBe(enErrors.notebook.r_package_named.replace("{{package}}", "data.table"));
+    expect(python.explanation).toBe(
+      enErrors.notebook.python_module_missing.replace("{{module}}", "sklearn").replace("{{package}}", "scikit-learn"),
+    );
+  });
+
   it("translates the latexmk setup cards with their params", () => {
     const coded = (code: string, params: Record<string, string>) => ({ ...warning(code), params });
     const [perl, compiler, command, biber, tool] = explainCodedCompileErrors([

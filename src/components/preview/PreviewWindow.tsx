@@ -10,6 +10,7 @@ import {
   INITIAL_PDF_LOAD_STATE,
   INITIAL_PDF_OUTLINE_STATE,
   INITIAL_PDF_SEARCH_STATE,
+  useHtmlDarkMode,
   usePdfReader,
 } from "./use-pdf-reader";
 import { CompileControlsView } from "@/components/layout/CompileControls";
@@ -26,6 +27,7 @@ import { usePreviewGeometry } from "@/lib/preview-geometry";
 import type { PreviewWorkspaceSnapshot } from "@/lib/preview-workspace";
 import { HtmlOutputPanel } from "./HtmlOutputPanel";
 import { openHtmlInBrowser } from "./open-compiled-html";
+import { copyOutputPath, saveWebPage, webPageName } from "./web-page-output";
 import {
   useCallback,
   useEffect,
@@ -338,17 +340,22 @@ export function PreviewWindow({
   const [exportMessage, setExportMessage] = useState("");
 
   const submitSavePdf = async () => {
-    if (!projectId || !previewDocument || saving) return;
+    const page = workspace?.htmlOutput?.projectId === projectId ? workspace.htmlOutput : null;
+    if (!projectId || (!previewDocument && !page) || saving) return;
     setSaving(true);
     try {
-      const name = `${(saveName.trim() || "document").replace(/\.pdf$/i, "")}.pdf`;
-      await saveFileBase64(projectId, name, uint8ToBase64(previewDocument.bytes));
-      if (isTauri()) {
-        void pdfSyncNoteSaved(projectId, name).catch((error) => logError("remember saved PDF", error));
+      if (page) {
+        await saveWebPage(projectId, page.mainDocument, webPageName(saveName.trim() || "document"));
+      } else if (previewDocument) {
+        const name = `${(saveName.trim() || "document").replace(/\.pdf$/i, "")}.pdf`;
+        await saveFileBase64(projectId, name, uint8ToBase64(previewDocument.bytes));
+        if (isTauri()) {
+          void pdfSyncNoteSaved(projectId, name).catch((error) => logError("remember saved PDF", error));
+        }
       }
       await command({ action: "refresh-files" });
       setSaveOpen(false);
-      toast.success(t(($) => $.preview.save.pdfSaved));
+      toast.success(page ? t(($) => $.preview.save.htmlSaved) : t(($) => $.preview.save.pdfSaved));
     } catch (error) {
       notifyError(
         "save to project",
@@ -755,16 +762,31 @@ export function PreviewWindow({
     previewDocument !== null &&
     !displayedIsCurrent &&
     !disableNativeBridge;
-  const pdfSync = usePdfSync({
-    projectId,
-    available: isTauri() && !disableNativeBridge,
-    outputId: currentOutputId(previewDocument?.checkpoint, displayedIsCurrent),
-    fastCompile: workspace?.compileMode === "fast",
-  });
   const htmlBuiltAt =
     workspace?.htmlOutput && workspace.htmlOutput.projectId === projectId
       ? workspace.htmlOutput.builtAt
       : null;
+  const webPage = htmlBuiltAt !== null;
+  const pageMain = workspace?.htmlOutput?.mainDocument ?? null;
+  const pageSavable = webPage && workspace?.pageSavable === true;
+  const htmlDark = useHtmlDarkMode();
+  const pdfSync = usePdfSync({
+    projectId,
+    available: isTauri() && !disableNativeBridge && (!webPage || (pageSavable && pageMain === workspace?.mainDoc)),
+    outputId: currentOutputId(previewDocument?.checkpoint, displayedIsCurrent),
+    fastCompile: workspace?.compileMode === "fast",
+    page: webPage,
+  });
+  const exportShownPage = () => {
+    if (!pageMain || workspace?.engine.id !== "quarto") return undefined;
+    return () => command({ action: "export-page-pdf", mainDocument: pageMain });
+  };
+  const copyPath = () => {
+    if (disableNativeBridge || !isTauri()) return undefined;
+    if (webPage && pageMain) return () => void copyOutputPath(projectId, pageMain, true);
+    const shownDocument = previewDocument?.checkpoint?.mainDocument;
+    return shownDocument ? () => void copyOutputPath(projectId, shownDocument, false) : undefined;
+  };
   const placeholderTitle = (): string => {
     if (compileState?.status === "compiling") return t(($) => $.preview.window.compilingTitle);
     if (compileState?.status === "error") return t(($) => $.preview.window.compileFailedTitle);
@@ -813,7 +835,12 @@ export function PreviewWindow({
       className="isolate h-full overflow-auto focus-visible:bg-accent/20"
     >
       {htmlBuiltAt !== null && (
-        <HtmlOutputPanel projectId={projectId} mainDocument={workspace?.htmlOutput?.mainDocument} builtAt={htmlBuiltAt} />
+        <HtmlOutputPanel
+          projectId={projectId}
+          mainDocument={workspace?.htmlOutput?.mainDocument}
+          builtAt={htmlBuiltAt}
+          inverted={htmlDark.shown}
+        />
       )}
       {htmlBuiltAt === null && (previewDocument ? (
         <ErrorBoundary
@@ -1003,20 +1030,24 @@ export function PreviewWindow({
             </Button>
           </div>}
         {!logsOpen && <PdfToolbarControls
-          isImage={false} hasDocument={!!previewDocument && htmlBuiltAt === null} numPages={numPages}
+          isImage={false} hasDocument={!!previewDocument || webPage} webPage={webPage} numPages={numPages}
           page={page} pageInput={pageInput} setPageInput={setPageInput} jumpToPage={jumpToPage}
           pdfRef={pdfRef} layout={layout} setLayout={setLayout}
           outlineOpen={outlineOpen} setOutlineOpen={setOutlineOpen}
           searchOpen={searchOpen} setSearchOpen={setSearchOpen} searchInputRef={searchInputRef} setSearchInput={setSearchInput}
           scale={scale} setScale={setScale} setClampedScale={setClampedScale} userZoom={userZoom} fitPreview={fitPreview}
-          exporting={exporting} exportDisplayedPreview={downloadDisplayedPdf}
-          downloadActionLabel={() => displayedIsStale ? t(($) => $.preview.actions.downloadStalePdf) : t(($) => $.preview.actions.downloadPdf)}
+          exporting={exporting}
+          exportDisplayedPreview={webPage ? exportShownPage() : downloadDisplayedPdf}
+          downloadActionLabel={webPage ? undefined : () => displayedIsStale ? t(($) => $.preview.actions.downloadStalePdf) : t(($) => $.preview.actions.downloadPdf)}
           pdfSync={pdfSync}
-          onSave={() => {
-            setSaveName(`${exportFileStem(workspace?.projectName, "document")}.pdf`);
+          onSave={webPage && !pageSavable ? undefined : () => {
+            setSaveName(`${exportFileStem(workspace?.projectName, "document")}.${webPage ? "html" : "pdf"}`);
             setSaveOpen(true);
           }}
-          inverted={inverted} setInverted={setInverted} screenReaderMode={screenReaderMode} setScreenReaderMode={setScreenReaderMode}
+          onCopyPath={copyPath()}
+          inverted={webPage ? htmlDark.shown : inverted}
+          setInverted={webPage ? htmlDark.setShown : setInverted}
+          screenReaderMode={screenReaderMode} setScreenReaderMode={setScreenReaderMode}
           rotation={rotation} rotationPending={rotationPending} onRotate={rotateClockwise}
           isFs={isFs} setFsToolbarHidden={setFsToolbarHidden} toggleFullscreen={toggleFullscreen}
           detached onWindow={() => void getCurrentWindow().close()}
@@ -1067,8 +1098,8 @@ export function PreviewWindow({
         {renderViewerOverlay()}
       </div>
 
-      <SavePreviewDialog saveOpen={saveOpen} closeSave={() => setSaveOpen(false)} pdfIsStale={displayedIsStale}
-        saveName={saveName} setSaveName={setSaveName} saving={saving} hasDocument={!!previewDocument} submitSavePdf={submitSavePdf} />
+      <SavePreviewDialog saveOpen={saveOpen} closeSave={() => setSaveOpen(false)} pdfIsStale={displayedIsStale} webPage={webPage}
+        saveName={saveName} setSaveName={setSaveName} saving={saving} hasDocument={!!previewDocument || webPage} submitSavePdf={submitSavePdf} />
       <div className="sr-only" aria-live="polite">
         {exportMessage}
       </div>

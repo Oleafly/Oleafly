@@ -564,7 +564,6 @@
     "uploading": "Enviando figuras e outros arquivos: {{done}} de {{total}}",
     "saving": "Salvando o projeto no servidor…",
     "failed": "O compartilhamento não terminou, então nada foi compartilhado.",
-    "trustAgain": "Qualquer pessoa que você adicionar a este projeto pode mudar os arquivos dele, então o Oleafly pede que você confie nele de novo neste computador antes de executar agentes, comandos do terminal ou o shell escape para ele.",
     "projectNotesShared": "As notas do projeto são compartilhadas com todos neste projeto. As notas pessoais continuam privadas.",
     "personalNotesPrivate": "As notas pessoais continuam privadas. Só as notas da pasta de notas do projeto são compartilhadas.",
     "unlinkOverleaf": "Desvincular do Overleaf",

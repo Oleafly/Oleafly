@@ -24,7 +24,13 @@
         "ext": ["md", "markdown"],
         "name": "Markdown document",
         "role": "Editor",
-        "rank": "Default"
+        "rank": "Alternate"
+      },
+      {
+        "ext": ["qmd", "Rmd"],
+        "name": "Quarto document",
+        "role": "Editor",
+        "rank": "Alternate"
       }
     ]
   }

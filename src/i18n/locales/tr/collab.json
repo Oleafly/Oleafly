@@ -564,7 +564,6 @@
     "uploading": "Şekiller ve diğer dosyalar yükleniyor: {{done}} / {{total}}",
     "saving": "Proje sunucuya kaydediliyor…",
     "failed": "Paylaşım tamamlanmadı, bu yüzden hiçbir şey paylaşılmadı.",
-    "trustAgain": "Bu projeye eklediğiniz herkes dosyalarını değiştirebilir, bu yüzden Oleafly bu bilgisayarda proje için ajanlar, terminal komutları veya shell escape çalıştırmadan önce projeye yeniden güvenmenizi ister.",
     "projectNotesShared": "Projenin notları bu projedeki herkesle paylaşılır. Kişisel notlar gizli kalır.",
     "personalNotesPrivate": "Kişisel notlar gizli kalır. Yalnızca projenin notlar klasöründeki notlar paylaşılır.",
     "unlinkOverleaf": "Overleaf bağlantısını kaldır",

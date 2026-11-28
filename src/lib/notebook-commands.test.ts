@@ -9,11 +9,16 @@ vi.mock("@tauri-apps/api/core", () => ({
 }));
 
 import {
+  installLanguageRuntime,
   installNotebookTool,
+  installPythonPackages,
+  installRPackages,
   notebookToolchainStatus,
   openCompiledHtml,
+  recheckNotebookToolchain,
   removeNotebookTool,
   type NotebookInstallProgress,
+  type RuntimeInstallProgress,
 } from "./notebook-commands";
 
 type ProgressChannel = { onmessage: (progress: NotebookInstallProgress) => void };
@@ -62,11 +67,32 @@ describe("notebook commands", () => {
     expect(seen).toEqual([]);
   });
 
+  it("downloads a language installer with a progress channel", async () => {
+    const seen: RuntimeInstallProgress[] = [];
+    invoke.mockImplementation(async (_command: string, args: { onProgress: { onmessage: (p: RuntimeInstallProgress) => void } }) => {
+      args.onProgress.onmessage({ runtime: "r", phase: "downloading", receivedBytes: 5, totalBytes: 10 });
+    });
+    await installLanguageRuntime("r", (progress) => seen.push(progress));
+    expect(invoke).toHaveBeenCalledWith("install_language_runtime", { runtime: "r", onProgress: expect.anything() });
+    expect(seen).toEqual([{ runtime: "r", phase: "downloading", receivedBytes: 5, totalBytes: 10 }]);
+  });
+
   it.each([
     ["remove_notebook_tool", () => removeNotebookTool("calepin"), { tool: "calepin" }],
     ["open_compiled_html", () => openCompiledHtml("p1"), { projectId: "p1" }],
+    ["install_r_packages", () => installRPackages("p1", ["knitr"]), { projectId: "p1", packages: ["knitr"] }],
+    [
+      "install_python_packages",
+      () => installPythonPackages("p1", ["pandas"]),
+      { projectId: "p1", packages: ["pandas"] },
+    ],
   ] as const)("sends %s with the expected arguments", async (command, call, args) => {
     await call();
     expect(invoke).toHaveBeenCalledWith(command, args);
+  });
+
+  it("rechecks the toolchain with no arguments", async () => {
+    await recheckNotebookToolchain();
+    expect(invoke).toHaveBeenCalledWith("recheck_notebook_toolchain");
   });
 });

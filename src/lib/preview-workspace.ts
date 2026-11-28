@@ -21,7 +21,7 @@ import { previewWindowState } from "@/lib/preview-state";
 import { currentProjectStateRevision } from "@/lib/project-state-revision";
 import type { PreviewWindowState } from "@/lib/preview-window";
 import { mainDocumentMissing } from "@/lib/main-document";
-import { effectiveMainDocMissing, resolveCompileTarget } from "@/lib/tex-root";
+import { effectiveMainDocMissing, insideQuartoProject, resolveCompileTarget } from "@/lib/tex-root";
 import { folderIsRestricted, useFolderAccessStore } from "@/store/folder-access";
 import { usePdfViewStore } from "@/store/pdf-view";
 import { activeTypstVariant, useTypstVariantStore } from "@/store/typst-variant";
@@ -45,11 +45,13 @@ export interface PreviewWorkspaceSnapshot extends
   livePreview?: LivePreviewState;
   previewState?: PreviewWindowState;
   htmlOutput?: CompiledHtmlOutput | null;
+  pageSavable?: boolean;
 }
 
 export type PreviewWorkspaceCommand =
   | { action: "compile"; fromScratch?: boolean }
   | { action: "stop" | "ready" | "pdf-settings" | "settings" | "refresh-files" | "ask-ai" | "trust-folder" | "clear-log" }
+  | { action: "export-page-pdf"; mainDocument: string }
   | { action: "preview-page"; page: number }
   | { action: "auto-compile" | "syntax-check" | "stop-on-error" | "code-execution"; value: boolean }
   | { action: "compile-mode"; value: "normal" | "fast" }
@@ -88,8 +90,11 @@ export async function startPreviewWorkspaceBridge(): Promise<() => void> {
       typstVariant: activeTypstVariant(projectId, files.engine),
       livePreview: compile.livePreview,
       ...(compileLogCleared(compile) ? { logCleared: true } : {}),
-      ...(shownHtmlOutput(compile.htmlOutput, files, resolveCompileTarget().mainDoc)
-        ? { htmlOutput: compile.htmlOutput }
+      ...(compile.htmlOutput && shownHtmlOutput(compile.htmlOutput, files, resolveCompileTarget().mainDoc)
+        ? {
+            htmlOutput: compile.htmlOutput,
+            pageSavable: !insideQuartoProject(files.tree, compile.htmlOutput.mainDocument),
+          }
         : {}),
       previewState: previewState?.identity.projectId === projectId
         ? { ...previewState, projectStateRevision: currentProjectStateRevision() } : undefined,
@@ -157,6 +162,16 @@ export async function startPreviewWorkspaceBridge(): Promise<() => void> {
           break;
         case "refresh-files": await files.refreshTree(); break;
         case "trust-folder": await useFolderAccessStore.getState().grant("folder"); break;
+        case "export-page-pdf": {
+          if (typeof payload.mainDocument !== "string" || payload.mainDocument !== compile.htmlOutput?.mainDocument) {
+            break;
+          }
+          const { getCurrentWindow } = await import("@tauri-apps/api/window");
+          await getCurrentWindow().setFocus();
+          const { exportCurrentDocument } = await import("@/features/export");
+          await exportCurrentDocument("pdf", payload.mainDocument);
+          break;
+        }
         case "pdf-settings": {
           useSettingsStore.getState().openSettingsAt("appearance", "pdf");
           const { getCurrentWindow } = await import("@tauri-apps/api/window");

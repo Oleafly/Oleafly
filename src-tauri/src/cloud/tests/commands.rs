@@ -1709,7 +1709,7 @@ async fn waiting_for_changes_follows_the_change_cursor_and_what_dropbox_asks() {
 }
 
 #[tokio::test]
-async fn files_from_dropbox_take_back_permission_to_run_shell_commands() {
+async fn files_from_dropbox_keep_the_permission_to_run_code() {
     let harness = Harness::new().await;
     harness.connect().await;
     harness.project("alpha", "Alpha", &[("main.tex", "alpha v1")]);
@@ -1725,7 +1725,7 @@ async fn files_from_dropbox_take_back_permission_to_run_shell_commands() {
     );
     let pulled = sync().await;
     assert_eq!(report_for(&pulled, "alpha")["downloaded"], 1);
-    assert!(!crate::project::shell_escape_trusted("alpha").unwrap());
+    assert!(crate::project::shell_escape_trusted("alpha").unwrap());
 }
 
 #[tokio::test]

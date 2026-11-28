@@ -58,7 +58,7 @@
     },
     "trustFolder": {
       "title": "Diesem Ordner vertrauen?",
-      "message": "Oleafly aktiviert Git, das Terminal, Agenten und LaTeX-Werkzeuge für {{name}}. Vertrauen Sie nur Ordnern, deren Inhalt Sie kennen.",
+      "message": "Oleafly aktiviert Git, das Terminal, Agenten, latexmk und Quarto für {{name}}. Code im Ordner läuft erst, wenn Sie es erlauben. Vertrauen Sie nur Ordnern, deren Inhalt Sie kennen.",
       "messageParent": "Oleafly vertraut {{name}} und jedem Ordner darin, auch solchen, die Sie später öffnen.",
       "messageRepository": "Oleafly führt Git in {{name}} mit den eigenen Einstellungen und Hooks des Repositorys aus.",
       "confirm": "Vertrauen"

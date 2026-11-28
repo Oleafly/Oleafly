@@ -25,11 +25,13 @@ export function usePdfSync({
   available,
   outputId,
   fastCompile,
+  page = false,
 }: Readonly<{
   projectId: string | null;
   available: boolean;
   outputId: string | null;
   fastCompile: boolean;
+  page?: boolean;
 }>): PdfSyncToggle | null {
   const { t } = useTranslation(["preview"]);
   const [status, setStatus] = useState<PdfSyncStatus | null>(null);
@@ -54,7 +56,7 @@ export function usePdfSync({
   const setEnabled = (enabled: boolean) => {
     if (!projectId || busy) return;
     setBusy(true);
-    pdfSyncSet(projectId, enabled, enabled ? outputId : null)
+    pdfSyncSet(projectId, enabled, enabled && !page ? outputId : null, enabled && page)
       .then((next) => {
         if (activeProject.current === projectId) setStatus(next);
       })

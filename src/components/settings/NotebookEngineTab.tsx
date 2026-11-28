@@ -9,7 +9,9 @@ import type {
   NotebookToolStatus,
 } from "@/lib/notebook-commands";
 import { formatDownloadSize } from "@/lib/download-size";
-import { cn } from "@/lib/utils";
+import { formatList } from "@/lib/intl";
+import { packageLabel } from "@/lib/runtime-needs";
+import { cn, isLinux } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CheckBadge } from "@/components/ui/check-badge";
@@ -18,18 +20,16 @@ import { SectionHeading } from "@/components/ui/section-heading";
 import { Tooltip } from "@/components/ui/tooltip";
 import { SettingsPath } from "@/components/settings/SettingsPath";
 import {
+  missingRuntimePackages,
   NOTEBOOK_TOOL_LABELS,
   notebookInstallLabel,
   notebookInstallPercent,
   notebookToolBusy,
+  RUNTIME_LABELS,
+  runtimeTaskLabel,
   useNotebookToolchainStore,
+  type RuntimeTaskState,
 } from "@/store/notebook-toolchain";
-
-const RUNTIME_LABELS: Readonly<Record<LanguageRuntimeName, string>> = {
-  r: "R",
-  python: "Python",
-  julia: "Julia",
-};
 
 const RUNTIME_ORDER: readonly LanguageRuntimeName[] = ["r", "python", "julia"];
 
@@ -234,9 +234,116 @@ function DownloadToolCard({ tool, status }: Readonly<{ tool: NotebookTool; statu
   );
 }
 
+function RuntimeTaskProgress({ task, testId }: Readonly<{ task: RuntimeTaskState; testId: string }>) {
+  const percent = task.phase === "downloading" ? notebookInstallPercent(task) : null;
+  return (
+    <div className="mt-2 flex items-center gap-2" data-testid={testId}>
+      {percent !== null && <Progress value={percent} className="max-w-48" indicatorClassName="bg-primary" />}
+      <span className="shrink-0 text-[0.6875rem] text-muted-foreground">{runtimeTaskLabel(task)}</span>
+    </div>
+  );
+}
+
+function CheckAgainButton({ testId }: Readonly<{ testId: string }>) {
+  const { t } = useTranslation(["settings"]);
+  const recheck = useNotebookToolchainStore((s) => s.recheck);
+  return (
+    <Button type="button" size="sm" variant="outline" className="mt-2 h-7" data-testid={testId} onClick={() => void recheck()}>
+      {t(($) => $.settings.engine.notebook.languages.checkAgain)}
+    </Button>
+  );
+}
+
+function MissingRuntimeActions({
+  name,
+  runtime,
+}: Readonly<{ name: "r" | "python"; runtime: LanguageRuntime | undefined }>) {
+  const { t } = useTranslation(["settings"]);
+  const task = useNotebookToolchainStore((s) => s.runtimeTasks[name]);
+  const awaiting = useNotebookToolchainStore((s) => s.awaitingInstaller.includes(name));
+  const installRuntime = useNotebookToolchainStore((s) => s.installRuntime);
+  const label = RUNTIME_LABELS[name];
+  if (task) return <RuntimeTaskProgress task={task} testId={`notebook-language-${name}-progress`} />;
+  if (awaiting) {
+    return (
+      <>
+        <p className="mt-1 text-[0.6875rem] text-muted-foreground">
+          {t(($) => $.settings.engine.notebook.languages.finishInstaller, { name: label })}
+        </p>
+        <CheckAgainButton testId={`notebook-language-${name}-recheck`} />
+      </>
+    );
+  }
+  const installer = runtime?.installer;
+  if (installer) {
+    return (
+      <>
+        <p className="mt-1 text-[0.6875rem] leading-relaxed text-muted-foreground">
+          {t(($) => $.settings.engine.notebook.languages.installerNote)}
+        </p>
+        <Button
+          type="button"
+          size="sm"
+          className="mt-2"
+          data-testid={`notebook-language-${name}-install`}
+          onClick={() => void installRuntime(name)}
+        >
+          <Download className="size-3.5" />
+          {t(($) => $.settings.engine.notebook.download.action, {
+            tool: label,
+            version: installer.version,
+            size: formatDownloadSize(installer.downloadBytes),
+          })}
+        </Button>
+      </>
+    );
+  }
+  return (
+    <>
+      <p className="mt-1 text-[0.6875rem] leading-relaxed text-muted-foreground">
+        {isLinux
+          ? t(($) => $.settings.engine.notebook.languages.packageManager[name])
+          : t(($) => $.settings.engine.notebook.languages.installYourself, { name: label })}
+      </p>
+      <CheckAgainButton testId={`notebook-language-${name}-recheck`} />
+    </>
+  );
+}
+
+function RuntimePackageActions({ name, runtime }: Readonly<{ name: "r" | "python"; runtime: LanguageRuntime }>) {
+  const { t } = useTranslation(["settings"]);
+  const task = useNotebookToolchainStore((s) => s.runtimeTasks[name === "r" ? "r-packages" : "python-packages"]);
+  const installPackages = useNotebookToolchainStore((s) => s.installRuntimePackages);
+  const missing = missingRuntimePackages(runtime);
+  if (missing.length === 0) return null;
+  const packages = formatList(missing.map(packageLabel));
+  return (
+    <>
+      <p className="mt-1 text-[0.6875rem] text-muted-foreground">
+        {t(($) => $.settings.engine.notebook.languages.packagesMissing, { packages })}
+      </p>
+      {task ? (
+        <RuntimeTaskProgress task={task} testId={`notebook-language-${name}-packages-progress`} />
+      ) : (
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="mt-2 h-7"
+          data-testid={`notebook-language-${name}-packages`}
+          onClick={() => void installPackages(name, missing)}
+        >
+          {t(($) => $.settings.engine.notebook.languages.installPackages, { packages })}
+        </Button>
+      )}
+    </>
+  );
+}
+
 function LanguageRow({ name, runtime }: Readonly<{ name: LanguageRuntimeName; runtime: LanguageRuntime | undefined }>) {
   const { t } = useTranslation(["settings"]);
   const path = runtime?.path ?? null;
+  const installable = name === "julia" ? null : name;
   return (
     <div
       data-testid={`notebook-language-${name}`}
@@ -258,6 +365,8 @@ function LanguageRow({ name, runtime }: Readonly<{ name: LanguageRuntimeName; ru
             {t(($) => $.settings.engine.notebook.languages.notFound)}
           </p>
         )}
+        {installable && !path && <MissingRuntimeActions name={installable} runtime={runtime} />}
+        {installable && path && runtime && <RuntimePackageActions name={installable} runtime={runtime} />}
       </div>
       {path && <CheckBadge tone="success" />}
     </div>

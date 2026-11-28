@@ -328,7 +328,15 @@
     "notChecked": "Nicht geprüft",
     "dictionaryMissing": "{{name}} ist nicht heruntergeladen, daher wird die Rechtschreibung nicht geprüft. Laden Sie es in den Einstellungen herunter oder wählen Sie eine andere Sprache.",
     "grammarEnglishOnly": "Die Grammatikprüfung funktioniert nur für englische Dokumente.",
-    "spellLanguageNotDownloaded": "{{name}} (nicht heruntergeladen)"
+    "spellLanguageNotDownloaded": "{{name}} (nicht heruntergeladen)",
+    "code": {
+      "title": "Code on this computer",
+      "run": "Run this project's code when compiling",
+      "hint": "R, Python and Julia chunks and LaTeX shell commands run with your permissions. Oleafly keeps this choice until you turn it off here.",
+      "restrictedHint": "Trust this folder first. Code never runs in a folder you haven't trusted.",
+      "trust": "Trust this folder",
+      "stopTrusting": "Stop trusting this folder"
+    }
   },
   "table": {
     "trigger": "Tabelle einfügen",

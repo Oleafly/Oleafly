@@ -240,6 +240,7 @@ impl ShareRules {
 
     fn skips(&self, name: &str, relative: &str, is_dir: bool) -> bool {
         scratch_name(name)
+            || (!is_dir && oleafly_core::exclude::is_private_session_file(name))
             || self.private_record(relative)
             || self.synced_pdf.as_deref() == Some(relative)
             || self.generated(relative)
@@ -730,6 +731,30 @@ mod tests {
         let path = root.join(relative);
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
         std::fs::write(path, text).unwrap();
+    }
+
+    #[test]
+    fn r_session_files_and_environments_never_reach_collaborators() {
+        let folder = tempfile::tempdir().unwrap();
+        let root = folder.path();
+        write(root, "analysis.qmd", "# Analysis\n");
+        write(root, ".Renviron", "API_KEY=secret\n");
+        write(root, ".RData", "binary");
+        write(root, "venv/pyvenv.cfg", "home = /usr\n");
+        write(root, "venv/lib/site.py", "x");
+        write(root, "renv/library/knitr/DESCRIPTION", "Package: knitr\n");
+        write(root, "renv/activate.R", "source()\n");
+        let rules = ShareRules::load(root);
+        for left_out in [
+            ".Renviron",
+            ".RData",
+            "venv/lib/site.py",
+            "renv/library/knitr/DESCRIPTION",
+        ] {
+            assert!(rules.leaves_out(left_out, false), "{left_out}");
+        }
+        assert!(!rules.leaves_out("renv/activate.R", false));
+        assert!(!rules.leaves_out("analysis.qmd", false));
     }
 
     #[test]

@@ -8,6 +8,8 @@ const PAGE_URL = "http://127.0.0.1:4321/0123abcd/report.html";
 const mocks = vi.hoisted(() => ({
   openCompiledHtml: vi.fn(async (_projectId: string) => {}),
   compiledHtmlPreviewUrl: vi.fn(async (_projectId: string) => "http://127.0.0.1:4321/0123abcd/report.html"),
+  saveWebPage: vi.fn(async (_projectId: string, _mainDocument: string, _name: string) => {}),
+  exportCurrentDocument: vi.fn(async (_format: string, _mainDoc?: string) => {}),
 }));
 
 vi.mock("@/components/pdf/PdfViewer", () => ({ PdfViewer: () => null }));
@@ -18,6 +20,14 @@ vi.mock("@/features/synctex", () => ({
 }));
 vi.mock("@/features/ask-ai-compile-errors", () => ({ askAiAboutCompileErrors: vi.fn() }));
 vi.mock("@/lib/preview-window", () => ({ openPreviewWindow: vi.fn() }));
+vi.mock("./web-page-output", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  saveWebPage: mocks.saveWebPage,
+}));
+vi.mock("@/features/export", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  exportCurrentDocument: mocks.exportCurrentDocument,
+}));
 vi.mock("@/lib/notebook-commands", () => ({
   openCompiledHtml: mocks.openCompiledHtml,
   compiledHtmlPreviewUrl: mocks.compiledHtmlPreviewUrl,
@@ -30,6 +40,7 @@ vi.mock("@/components/ui/toolbar-overflow", async (importOriginal) => ({
   }),
 }));
 
+import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enErrors from "@/i18n/locales/en/errors.json" with { type: "json" };
 import enPreview from "@/i18n/locales/en/preview.json" with { type: "json" };
 import { APP_ERROR_PREFIX } from "@/lib/app-error";
@@ -61,11 +72,13 @@ function show({
   status = "success",
   htmlOutput = { projectId: "p1", mainDocument: "report.qmd", path: "/p1/.oleafly/build/report.html", builtAt: BUILT_AT },
   activePath = null,
+  extraFiles = [],
 }: {
   engine?: DocumentEngineDescriptor;
   status?: string;
   htmlOutput?: CompiledHtmlOutput | null;
   activePath?: string | null;
+  extraFiles?: string[];
 } = {}) {
   useFilesStore.setState({
     projectId: "p1",
@@ -76,6 +89,7 @@ function show({
     tree: [
       { path: "report.qmd", is_dir: false },
       { path: "slides.typ", is_dir: false },
+      ...extraFiles.map((path) => ({ path, is_dir: false })),
     ],
     activePath,
     openTabs: activePath ? [activePath] : [],
@@ -113,7 +127,13 @@ describe("preview of a document built as a web page", () => {
     expect(page).toHaveAttribute("src", `${PAGE_URL}?v=${BUILT_AT}`);
     expect(page.getAttribute("sandbox")?.split(" ")).not.toContain("allow-top-navigation");
     expect(page).toHaveAttribute("allow", "fullscreen");
-    expect(screen.getByRole("button", { name: enPreview.actions.downloadPdf })).toBeDisabled();
+    expect(screen.getByRole("button", { name: enPreview.actions.downloadPageAsPdf })).toBeEnabled();
+    expect(screen.getByRole("button", { name: enPreview.actions.invertPage })).toBeEnabled();
+    expect(screen.getByRole("button", { name: enPreview.actions.fullscreen })).toBeEnabled();
+    expect(screen.getByRole("button", { name: enPreview.actions.openWindow })).toBeEnabled();
+    for (const hidden of [enPreview.zoom.in, enPreview.zoom.out, enPreview.actions.rotate, enPreview.actions.readerView]) {
+      expect(screen.queryByRole("button", { name: hidden })).not.toBeInTheDocument();
+    }
     await userEvent.setup().click(screen.getByRole("button", { name: copy.open }));
     expect(mocks.openCompiledHtml).toHaveBeenCalledExactlyOnceWith("p1", "report.qmd");
   });
@@ -199,6 +219,46 @@ describe("preview of a document built as a web page", () => {
 
     act(() => useFilesStore.setState({ activePath: "report.qmd" }));
     await waitFor(() => expect(screen.queryByTestId("html-output-panel")).not.toBeInTheDocument());
+  });
+
+  it("saves the page that is shown into the project as one HTML file", async () => {
+    show();
+    await screen.findByTitle("report.html");
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: enPreview.actions.saveHtml }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByRole("heading")).toHaveTextContent(enPreview.actions.saveHtml);
+    expect(within(dialog).getByText(enPreview.save.htmlDescription)).toBeInTheDocument();
+    expect(within(dialog).getByRole("textbox")).toHaveValue("Report.html");
+    await user.click(within(dialog).getByRole("button", { name: enCommon.actions.save }));
+    await waitFor(() => expect(mocks.saveWebPage).toHaveBeenCalledExactlyOnceWith("p1", "report.qmd", "Report.html"));
+    await waitFor(() =>
+      expect(useToastStore.getState().toasts).toEqual([
+        expect.objectContaining({ kind: "success", message: enPreview.save.htmlSaved }),
+      ]),
+    );
+  });
+
+  it("offers no single-file save for a page of a Quarto website or book", async () => {
+    show({ extraFiles: ["_quarto.yml"] });
+    await screen.findByTitle("report.html");
+    expect(screen.queryByRole("button", { name: enPreview.actions.saveHtml })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: enPreview.actions.downloadPageAsPdf })).toBeEnabled();
+  });
+
+  it("downloads the shown page as a PDF through Quarto", async () => {
+    show();
+    await screen.findByTitle("report.html");
+    await userEvent.setup().click(screen.getByRole("button", { name: enPreview.actions.downloadPageAsPdf }));
+    expect(mocks.exportCurrentDocument).toHaveBeenCalledExactlyOnceWith("pdf", "report.qmd");
+  });
+
+  it("offers no page download when the project's engine cannot export it", async () => {
+    const page = { projectId: "p1", mainDocument: "slides.typ", path: "/p1/.oleafly/build/slides.html", builtAt: BUILT_AT };
+    show({ engine: LATEX_ENGINE, htmlOutput: page, activePath: "slides.typ" });
+    expect(await screen.findByTestId("html-output-panel")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: enPreview.actions.downloadPageAsPdf })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: enPreview.actions.invertPage })).toBeEnabled();
   });
 
   it("leaves a failed first build to the usual error state", () => {

@@ -710,6 +710,7 @@ export const SETTINGS_FIELDS: readonly SettingField[] = [
   pref("appearance.terminal.confirmClose", "terminalConfirmClose", bool),
 
   pref("appearance.pdf.darkMode", "pdfDarkMode", pdfDarkModeValue),
+  pref("appearance.pdf.webPageDarkMode", "htmlDarkMode", pdfDarkModeValue),
   pref("appearance.pdf.hoverPreview", "hoverPreview", bool),
 
   pref("appearance.files.projectLayout", "homeProjectLayout", oneOf(["grid", "list"] as const)),

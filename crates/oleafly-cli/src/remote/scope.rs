@@ -103,13 +103,6 @@ impl RemoteScope {
         }
     }
 
-    pub(crate) fn revoke_shell_escape_trust(&self, data_root: &Path) -> Result<(), CliError> {
-        match self.app_identity() {
-            Some(identity) => crate::app_paths::revoke_shell_escape_trust(data_root, identity.id()),
-            None => Ok(()),
-        }
-    }
-
     pub(crate) fn project_id(&self) -> Option<&str> {
         match self {
             Self::Library { project_id, .. } => Some(project_id),
@@ -570,14 +563,8 @@ mod tests {
             (error.code.as_ref(), error.exit() as u8, error.retryable),
             ("conflict.restore_pending", 8, true)
         );
-        let trust = data.join("device-trust").join("latex-shell-escape");
-        std::fs::create_dir_all(&trust).unwrap();
-        std::fs::write(trust.join("l-1.json"), "{}").unwrap();
-        scope.revoke_shell_escape_trust(&data).unwrap();
-        assert!(!trust.join("l-1.json").exists());
         let plain = RemoteScope::Folder { root: folder };
         plain.ensure_no_pending_restore().unwrap();
-        plain.revoke_shell_escape_trust(&data).unwrap();
         assert!(plain.worktree_lock(&data).is_none());
     }
 

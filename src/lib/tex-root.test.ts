@@ -539,7 +539,7 @@ Thanks.
     expect(resolveCompileTarget()).toMatchObject({ mainDoc: "poster.typ", format: "typst" });
   });
 
-  it("keeps the main document for repository notes, files outside the tree and files in its own format", () => {
+  it("keeps the main document for repository notes and files outside the tree, and follows another document of its own format", () => {
     project("README.md", { "README.md": "# Repo\n" });
     expect(resolveCompileTarget()).toMatchObject({ mainDoc: "paper.tex", format: null });
     project("AGENTS.md", { "AGENTS.md": "Rules\n" });
@@ -547,7 +547,7 @@ Thanks.
     project("elsewhere.md", { "elsewhere.md": "# Not in the tree\n" });
     expect(resolveCompileTarget().mainDoc).toBe("paper.tex");
     project("notes/meeting.md", { "notes/meeting.md": "# Meeting\n" }, { mainDoc: "paper.md" });
-    expect(resolveCompileTarget()).toMatchObject({ mainDoc: "paper.md", format: null });
+    expect(resolveCompileTarget()).toMatchObject({ mainDoc: "notes/meeting.md", reason: "standalone", format: null });
   });
 
   it("compiles a complete LaTeX file in a Quarto project but not Quarto's own partials", () => {
@@ -578,10 +578,10 @@ Thanks.
     expect(resolveCompileTarget().mainDoc).toBe("paper.tex");
   });
 
-  it("leaves Markdown in a Quarto project, Pandoc templates and files other documents use to the main document", () => {
+  it("builds Markdown in a Quarto folder by itself and leaves Pandoc templates and files other documents use to the main document", () => {
     const quarto = { mainDoc: "index.qmd", engine: { ...LATEX_ENGINE, id: "quarto", source_format: "markdown" } };
     project("notes/meeting.md", { "notes/meeting.md": "# Meeting\n" }, quarto);
-    expect(resolveCompileTarget()).toMatchObject({ mainDoc: "index.qmd", format: null });
+    expect(resolveCompileTarget()).toMatchObject({ mainDoc: "notes/meeting.md", reason: "standalone", format: null });
 
     const template = String.raw`\documentclass{article}
 \begin{document}
@@ -609,5 +609,70 @@ $body$
     useCompileRootStore.setState({ followOpenFile: false });
     project("notes/meeting.md", { "notes/meeting.md": "# Meeting\n" });
     expect(resolveCompileTarget()).toMatchObject({ mainDoc: "paper.tex", format: null });
+  });
+
+  describe("a second document in the project's own format", () => {
+    const files = (...paths: string[]) => paths.map((path) => ({ path, is_dir: false }));
+    const typst = { mainDoc: "main.typ", engine: { ...LATEX_ENGINE, id: "typst", source_format: "typst" } };
+    const quarto = { mainDoc: "analysis.qmd", engine: { ...LATEX_ENGINE, id: "quarto", source_format: "markdown" } };
+    const parts = (...paths: string[]) => useCompileRootStore.setState({ parts: { projectId: "mixed", files: new Set(paths) } });
+
+    it("compiles a Typst poster by itself but leaves a template main.typ imports to the main document", () => {
+      parts("template.typ");
+      const tree = files("main.typ", "poster.typ", "template.typ");
+      project("poster.typ", { "poster.typ": "= Poster\n" }, { ...typst, tree });
+      expect(resolveCompileTarget()).toEqual({
+        mainDoc: "poster.typ",
+        overriddenBy: "poster.typ",
+        reason: "standalone",
+        brokenRoot: null,
+        format: null,
+      });
+      project("template.typ", { "template.typ": "#let accent = blue\n" }, { ...typst, tree });
+      expect(resolveCompileTarget().mainDoc).toBe("main.typ");
+    });
+
+    it("waits for the project analysis before following, so an unknown part never builds alone", () => {
+      project("poster.typ", { "poster.typ": "= Poster\n" }, { ...typst, tree: files("main.typ", "poster.typ") });
+      expect(resolveCompileTarget().mainDoc).toBe("main.typ");
+    });
+
+    it("follows a Quarto document before the project analysis, but never a _partial", () => {
+      const tree = files("analysis.qmd", "funder-report.Rmd", "_methods.qmd");
+      project("funder-report.Rmd", { "funder-report.Rmd": "---\ntitle: Report\n---\n" }, { ...quarto, tree });
+      expect(resolveCompileTarget().mainDoc).toBe("funder-report.Rmd");
+      project("_methods.qmd", { "_methods.qmd": "## Methods\n" }, { ...quarto, tree });
+      expect(resolveCompileTarget().mainDoc).toBe("analysis.qmd");
+    });
+
+    it("compiles another R Markdown or Markdown file of a Quarto folder by itself", () => {
+      parts();
+      const tree = files("analysis.qmd", "funder-report.Rmd", "notes.md");
+      project("funder-report.Rmd", { "funder-report.Rmd": "---\ntitle: Report\n---\n" }, { ...quarto, tree });
+      expect(resolveCompileTarget()).toMatchObject({ mainDoc: "funder-report.Rmd", reason: "standalone", format: null });
+      project("notes.md", { "notes.md": "# Notes\n" }, { ...quarto, tree });
+      expect(resolveCompileTarget()).toMatchObject({ mainDoc: "notes.md", reason: "standalone" });
+    });
+
+    it("keeps the main document for chapters of a _quarto.yml book or website", () => {
+      parts();
+      const tree = files("_quarto.yml", "analysis.qmd", "chapters/methods.qmd");
+      project("chapters/methods.qmd", { "chapters/methods.qmd": "# Methods\n" }, { ...quarto, tree });
+      expect(resolveCompileTarget().mainDoc).toBe("analysis.qmd");
+      const nested = files("analysis.qmd", "site/_quarto.yaml", "site/about.qmd");
+      project("site/about.qmd", { "site/about.qmd": "# About\n" }, { ...quarto, tree: nested });
+      expect(resolveCompileTarget().mainDoc).toBe("analysis.qmd");
+    });
+
+    it("keeps the followed document while a figure is open and drops it with its tab", () => {
+      parts();
+      const tree = files("main.typ", "poster.typ", "figure.png");
+      project("poster.typ", { "poster.typ": "= Poster\n" }, { ...typst, tree });
+      expect(resolveCompileTarget().mainDoc).toBe("poster.typ");
+      useFilesStore.setState({ activePath: "figure.png", openTabs: ["poster.typ", "figure.png"] });
+      expect(resolveCompileTarget()).toMatchObject({ mainDoc: "poster.typ", reason: "standalone" });
+      useFilesStore.setState({ openTabs: ["figure.png"] });
+      expect(resolveCompileTarget().mainDoc).toBe("main.typ");
+    });
   });
 });

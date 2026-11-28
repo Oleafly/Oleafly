@@ -139,6 +139,7 @@
       "specialFile": "Geen gewoon bestand",
       "tooLarge": "Te groot om te synchroniseren",
       "packageFolder": "Geïnstalleerde pakketten die je opnieuw kunt installeren",
+      "privateFile": "R-sessiebestand dat wachtwoorden of sleutels kan bevatten",
       "zipLeftovers": "Overgebleven na uitpakken",
       "unreadable": "Kon niet worden gelezen",
       "downloadFailed": "Kon niet worden gedownload",

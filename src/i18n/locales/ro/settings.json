@@ -1072,6 +1072,13 @@
       "hoverPreview": {
         "description": "Arată ultima pagină compilată atunci când treci cu mouse-ul peste un proiect din bibliotecă.",
         "label": "Previzualizează PDF-ul la trecerea cu mouse-ul"
+      },
+      "html": {
+        "title": "Previzualizarea paginilor web",
+        "darkMode": {
+          "label": "Modul întunecat pentru pagini web",
+          "description": "Pentru documentele Quarto care generează o pagină web. Cu Urmează tema aplicației, pagina devine întunecată când aplicația este întunecată, iar imaginile își păstrează culorile. Butonul de inversare a culorilor din bara previzualizării schimbă această opțiune în Activat sau Dezactivat."
+        }
       }
     },
     "sectionName": "Aspect",
@@ -1791,7 +1798,17 @@
         "heading": "Limbaje",
         "tooltip": "Codul din documentele Quarto și Calepin rulează cu aceste programe.",
         "notFound": "Negăsit",
-        "note": "Oleafly rulează codul cu R, Python și Julia care există deja pe acest computer. Nu le instalează niciodată."
+        "note": "Oleafly rulează codul cu R, Python și Julia de pe acest computer. Poate descărca pentru tine programele de instalare oficiale pentru R și Python și poate instala knitr, rmarkdown și Jupyter.",
+        "installerNote": "Oleafly descarcă programul de instalare oficial, îl verifică și îl deschide. Când instalarea se termină, revino aici și verifică din nou.",
+        "finishInstaller": "Termină instalarea {{name}}, apoi verifică din nou.",
+        "checkAgain": "Verifică din nou",
+        "packageManager": {
+          "r": "Instalează R cu managerul de pachete, de exemplu sudo apt install r-base sau sudo dnf install R. Apoi verifică din nou.",
+          "python": "Instalează Python 3 cu managerul de pachete, de exemplu sudo apt install python3 python3-venv. Apoi verifică din nou."
+        },
+        "installYourself": "Instalează {{name}} de pe site-ul lui, apoi verifică din nou.",
+        "packagesMissing": "Neinstalat: {{packages}}",
+        "installPackages": "Instalează {{packages}}"
       },
       "codeNote": "Codul dintr-un document rulează doar după ce permiți rularea codului pentru acel proiect din meniul Compilare.",
       "progress": {
@@ -1799,7 +1816,9 @@
         "downloading": "Se descarcă {{percent}}%",
         "verifying": "Se verifică",
         "extracting": "Se dezarhivează",
-        "done": "Se finalizează"
+        "done": "Se finalizează",
+        "opening": "Se deschide programul de instalare",
+        "installing": "Se instalează"
       },
       "error": {
         "load": "Nu s-au putut căuta Quarto, Calepin și limbajele.",
@@ -2777,11 +2796,14 @@
     },
     "actions": {
       "install": "Instalează",
-      "repair": "Repară"
+      "repair": "Repară",
+      "makeDefault": "Make default",
+      "stopDefault": "Stop using Oleafly"
     },
     "failed": {
       "install": "Nu s-a putut instala. Încearcă din nou.",
-      "remove": "Nu s-a putut elimina. Încearcă din nou."
+      "remove": "Nu s-a putut elimina. Încearcă din nou.",
+      "defaultApp": "Oleafly couldn't become the default for these files. Try again, or pick Oleafly in your system settings."
     },
     "packaged": "Instalat împreună cu pachetul Oleafly.",
     "quickAction": {
@@ -2814,7 +2836,33 @@
       "outdated": "Este învechită sau macOS a blocat-o. Repar-o ca să o readuci.",
       "elsewhere": "Meniul deschide o altă copie Oleafly. Repară-l ca să folosești aceasta.",
       "moved": "Indică o copie Oleafly care a fost mutată. Repar-o ca să folosești aceasta.",
-      "noDefaultFileManager": "Sistemul nu are un manager de fișiere implicit pentru foldere, așa că această intrare ar putea deschide orice folder în Oleafly. Elimin-o."
+      "noDefaultFileManager": "Sistemul nu are un manager de fișiere implicit pentru foldere, așa că această intrare ar putea deschide orice folder în Oleafly. Elimin-o.",
+      "noFileType": "This Mac doesn't know this file type, so Oleafly can't set it from here. In Finder, choose Get Info › Open with › Oleafly › Change All."
+    },
+    "defaultLatex": {
+      "label": "LaTeX files (.tex)",
+      "description": "Double-click a .tex file to open it in Oleafly."
+    },
+    "defaultTypst": {
+      "label": "Typst files (.typ)",
+      "description": "Double-click a .typ file to open it in Oleafly."
+    },
+    "defaultMarkdown": {
+      "label": "Markdown files (.md)",
+      "description": "Double-click a .md or .markdown file to open it in Oleafly."
+    },
+    "defaultQuarto": {
+      "label": "Quarto and R Markdown files",
+      "description": "Double-click a .qmd or .Rmd file to open it in Oleafly."
+    },
+    "defaultAppState": {
+      "installed": "Default",
+      "notInstalled": "Not default",
+      "needsAttention": "Not available"
+    },
+    "defaultAppConfirm": {
+      "macos": "If macOS asks, choose Use Oleafly. This row updates when you come back.",
+      "windows": "Pick Oleafly for this file type in Windows Settings. This row updates when you come back."
     }
   },
   "research": {

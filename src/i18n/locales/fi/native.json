@@ -58,7 +58,7 @@
     },
     "trustFolder": {
       "title": "Luotetaanko tähän kansioon?",
-      "message": "Oleafly ottaa käyttöön Gitin, päätteen, agentit ja LaTeX-työkalut kansiolle {{name}}. Luota vain kansioihin, joiden sisällön tunnet.",
+      "message": "Oleafly ottaa käyttöön Gitin, päätteen, agentit sekä työkalut latexmk ja Quarto kansiolle {{name}}. Kansion koodi suoritetaan vasta, kun sallit sen. Luota vain kansioihin, joiden sisällön tunnet.",
       "messageParent": "Oleafly luottaa kansioon {{name}} ja jokaiseen sen sisällä olevaan kansioon, myös niihin, jotka avaat myöhemmin.",
       "messageRepository": "Oleafly suorittaa Gitiä kansiossa {{name}} repositorion omilla asetuksilla ja koukuilla.",
       "confirm": "Luota"

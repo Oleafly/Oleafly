@@ -95,7 +95,9 @@ test("a TeX root comment in an opened folder compiles the root it declares", asy
   await expect.poll(async () => page.evaluate<string | null>(
     `import("/src/store/files.ts").then(({ useFilesStore }) => useFilesStore.getState().activePath)`,
   )).toBe("appendix/part.tex");
-  await expect(page.locator('[data-testid="tex-root-indicator"]')).toBeVisible({ timeout: 15_000 });
+  await expect.poll(async () => page.evaluate<string>(
+    `import("/src/lib/tex-root.ts").then(({ resolveCompileTarget }) => resolveCompileTarget().mainDoc)`,
+  ), { timeout: 15_000 }).toBe("appendix/appendix.tex");
   await compileAndWait(page);
   await expectCompiledPdfContains(page, "ROOTOVERRIDEMARK");
   await expectCompiledPdfContains(page, "Appendix part pulled in by the declared root.");

@@ -139,6 +139,7 @@
       "specialFile": "Normal bir dosya değil",
       "tooLarge": "Eşitlenemeyecek kadar büyük",
       "packageFolder": "Yeniden yükleyebileceğiniz yüklü paketler",
+      "privateFile": "Parola veya anahtar içerebilecek R oturum dosyası",
       "zipLeftovers": "Arşiv açma işleminden kalma",
       "unreadable": "Okunamadı",
       "downloadFailed": "İndirilemedi",

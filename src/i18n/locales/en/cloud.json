@@ -139,6 +139,7 @@
       "specialFile": "Not a regular file",
       "tooLarge": "Too large to sync",
       "packageFolder": "Installed packages you can reinstall",
+      "privateFile": "R session file that can hold passwords or keys",
       "zipLeftovers": "Left over from unzipping",
       "unreadable": "Couldn't be read",
       "downloadFailed": "Couldn't be downloaded",

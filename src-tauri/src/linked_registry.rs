@@ -35,6 +35,8 @@ pub(crate) struct LinkRecord {
     pub(crate) displaced: Option<Displacement>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) reattach: Option<ReattachOffer>,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub(crate) loose_file: bool,
     #[serde(flatten)]
     pub(crate) extra: BTreeMap<String, serde_json::Value>,
 }
@@ -974,6 +976,7 @@ mod management {
                 compile_dir: None,
                 displaced: None,
                 reattach,
+                loose_file: false,
                 extra: BTreeMap::new(),
             };
             write_record(&reservation.directory, &record)?;
@@ -1108,6 +1111,7 @@ mod tests {
             compile_dir: None,
             displaced: None,
             reattach: None,
+            loose_file: false,
             extra: BTreeMap::new(),
         }
     }

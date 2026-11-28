@@ -748,7 +748,8 @@ fn is_synced_pdf(project: &Path, rel: &str) -> bool {
 
 fn private_name(name: &str) -> bool {
     let lower = name.to_ascii_lowercase();
-    lower.starts_with(".env")
+    oleafly_core::exclude::is_private_session_file(name)
+        || lower.starts_with(".env")
         || lower == ".private"
         || [".pem", ".p12", ".pfx"]
             .iter()
@@ -764,9 +765,13 @@ pub fn kept_local(rel: &str, has_sibling: impl Fn(&str) -> bool) -> bool {
     let Some(name) = parts.pop() else {
         return false;
     };
+    let in_generated_folder = (1..=parts.len()).any(|end| {
+        oleafly_core::exclude::is_generated_folder(&parts[..end].join("/"), &has_sibling)
+    });
     parts
         .iter()
         .any(|folder| oleafly_core::exclude::is_linked_skipped_directory(folder))
+        || in_generated_folder
         || private_name(name)
         || oleafly_core::exclude::is_build_artifact(rel, has_sibling)
 }

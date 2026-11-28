@@ -28,6 +28,10 @@ pub(crate) enum ItemId {
     Nemo,
     Nautilus,
     FolderOpenWith,
+    DefaultLatex,
+    DefaultTypst,
+    DefaultMarkdown,
+    DefaultQuarto,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
@@ -72,6 +76,8 @@ pub(crate) struct Status {
 struct Context {
     #[cfg(not(windows))]
     identifier: String,
+    #[cfg(target_os = "linux")]
+    product_name: Option<String>,
 }
 
 impl Context {
@@ -81,6 +87,8 @@ impl Context {
         Self {
             #[cfg(not(windows))]
             identifier: app.config().identifier.clone(),
+            #[cfg(target_os = "linux")]
+            product_name: app.config().product_name.clone(),
         }
     }
 }
@@ -157,16 +165,42 @@ fn quick_action_item(context: &Context, services: &Path) -> Item {
 }
 
 #[cfg(target_os = "macos")]
+const NO_FILE_TYPE: &str = "no_file_type";
+
+#[cfg(target_os = "macos")]
+fn default_app_item(context: &Context, id: ItemId) -> Item {
+    let state = match default_apps::mac_state(id, &context.identifier) {
+        default_apps::MacState::Default => ItemState::Installed,
+        default_apps::MacState::Other => ItemState::NotInstalled,
+        default_apps::MacState::NoFileType => ItemState::NeedsAttention,
+    };
+    Item::managed(id, state, NO_FILE_TYPE)
+}
+
+#[cfg(target_os = "macos")]
 fn status(context: &Context) -> Result<Status, String> {
     let services = quick_action::services_dir()?;
+    let mut items = vec![quick_action_item(context, &services)];
+    items.extend(
+        default_apps::ITEMS
+            .iter()
+            .map(|id| default_app_item(context, *id)),
+    );
     Ok(Status {
         platform: "macos",
-        items: vec![quick_action_item(context, &services)],
+        items,
     })
 }
 
 #[cfg(target_os = "macos")]
 fn set(context: &Context, id: ItemId, enabled: bool) -> Result<Item, String> {
+    if default_apps::ITEMS.contains(&id) {
+        if !enabled {
+            return Err("macOS keeps an app as the default until another app is chosen".into());
+        }
+        default_apps::mac_make_default(id, &context.identifier)?;
+        return Ok(default_app_item(context, id));
+    }
     if id != ItemId::QuickAction {
         return Err(format!("{id:?} is not available on macOS"));
     }
@@ -203,40 +237,43 @@ fn claim_offer(_context: &Context) -> Result<bool, String> {
     Ok(false)
 }
 
-#[cfg(any(target_os = "macos", target_os = "linux", test))]
+#[cfg(any(target_os = "linux", test))]
 const DEFAULT_APPS_PREF: &str = "default_apps_claimed";
 
-#[cfg(any(target_os = "macos", target_os = "linux", test))]
-fn claim_default_apps_once(
+#[cfg(any(target_os = "linux", test))]
+const DEFAULT_APPS_POLICY_PREF: &str = "default_apps_policy";
+
+#[cfg(any(target_os = "linux", test))]
+const DEFAULT_APPS_POLICY: u64 = 2;
+
+#[cfg(any(target_os = "linux", test))]
+fn undo_silent_markdown_claim_once(
     prefs: &Path,
-    claim: impl FnOnce() -> Result<(), String>,
+    undo: impl FnOnce() -> Result<(), String>,
 ) -> Result<bool, String> {
-    let claimed = read_prefs_at(prefs)
+    let current = read_prefs_at(prefs);
+    let settled = current
+        .get(DEFAULT_APPS_POLICY_PREF)
+        .and_then(Value::as_u64)
+        .is_some_and(|policy| policy >= DEFAULT_APPS_POLICY);
+    if settled {
+        return Ok(false);
+    }
+    let claimed = current
         .get(DEFAULT_APPS_PREF)
         .and_then(Value::as_bool)
         .unwrap_or(false);
-    if claimed {
+    update_prefs_at(prefs, |prefs| {
+        prefs.insert(
+            DEFAULT_APPS_POLICY_PREF.to_string(),
+            Value::from(DEFAULT_APPS_POLICY),
+        )
+    })?;
+    if !claimed {
         return Ok(false);
     }
-    claim()?;
-    update_prefs_at(prefs, |prefs| {
-        prefs.insert(DEFAULT_APPS_PREF.to_string(), Value::Bool(true))
-    })?;
+    undo()?;
     Ok(true)
-}
-
-#[cfg(any(target_os = "macos", target_os = "linux", test))]
-fn claim_default_apps(
-    prefs: Result<PathBuf, String>,
-    claim: impl FnOnce() -> Result<(), String>,
-) -> Option<String> {
-    match prefs.and_then(|prefs| claim_default_apps_once(&prefs, claim)) {
-        Ok(true) => Some("Oleafly is now the default app for .tex, .typ and .md files.".into()),
-        Ok(false) => None,
-        Err(error) => Some(format!(
-            "Oleafly could not become the default app for its file types: {error}"
-        )),
-    }
 }
 
 #[cfg(any(target_os = "macos", windows, target_os = "linux"))]
@@ -265,20 +302,91 @@ fn explorer_values() -> Result<Vec<explorer_menu::RegistryValue>, String> {
 }
 
 #[cfg(windows)]
+const WINDOWS_DEFAULT_TYPES: [(ItemId, &[&str]); 4] = [
+    (ItemId::DefaultLatex, &["tex"]),
+    (ItemId::DefaultTypst, &["typ"]),
+    (ItemId::DefaultMarkdown, &["md", "markdown"]),
+    (ItemId::DefaultQuarto, &["qmd", "Rmd"]),
+];
+
+#[cfg(windows)]
+fn windows_user_choice(extension: &str) -> Option<String> {
+    windows_registry::CURRENT_USER
+        .open(format!(
+            "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\FileExts\\.{extension}\\UserChoice"
+        ))
+        .ok()?
+        .get_string("ProgId")
+        .ok()
+        .or_else(|| {
+            windows_registry::CLASSES_ROOT
+                .open(format!(".{extension}"))
+                .ok()?
+                .get_string("")
+                .ok()
+        })
+}
+
+#[cfg(windows)]
+fn windows_default_item(id: ItemId, extensions: &[&str]) -> Item {
+    let ours = extensions.iter().all(|extension| {
+        windows_user_choice(extension)
+            .is_some_and(|prog_id| prog_id.eq_ignore_ascii_case(&format!("Oleafly.{extension}")))
+    });
+    let state = if ours {
+        ItemState::Installed
+    } else {
+        ItemState::NotInstalled
+    };
+    Item::managed(id, state, ELSEWHERE)
+}
+
+#[cfg(windows)]
+fn open_windows_default_apps() -> Result<(), String> {
+    let per_user = windows_registry::CURRENT_USER
+        .open("Software\\RegisteredApplications")
+        .and_then(|key| key.get_string("Oleafly"))
+        .is_ok();
+    let target = if per_user {
+        "ms-settings:defaultapps?registeredAppUser=Oleafly"
+    } else {
+        "ms-settings:defaultapps?registeredAppMachine=Oleafly"
+    };
+    std::process::Command::new("explorer.exe")
+        .arg(target)
+        .spawn()
+        .map(|_| ())
+        .map_err(|error| error.to_string())
+}
+
+#[cfg(windows)]
 fn status(_context: &Context) -> Result<Status, String> {
     let expected = explorer_values()?;
+    let mut items = vec![Item::managed(
+        ItemId::ExplorerMenu,
+        explorer_menu::state(windows_registry::CURRENT_USER, "", &expected),
+        ELSEWHERE,
+    )];
+    items.extend(
+        WINDOWS_DEFAULT_TYPES
+            .iter()
+            .map(|(id, extensions)| windows_default_item(*id, extensions)),
+    );
     Ok(Status {
         platform: "windows",
-        items: vec![Item::managed(
-            ItemId::ExplorerMenu,
-            explorer_menu::state(windows_registry::CURRENT_USER, "", &expected),
-            ELSEWHERE,
-        )],
+        items,
     })
 }
 
 #[cfg(windows)]
 fn set(_context: &Context, id: ItemId, enabled: bool) -> Result<Item, String> {
+    if let Some((_, extensions)) = WINDOWS_DEFAULT_TYPES.iter().find(|(item, _)| *item == id) {
+        if !enabled {
+            return Err("Windows keeps an app as the default until another app is chosen".into());
+        }
+        open_windows_default_apps()?;
+        return Ok(windows_default_item(id, extensions));
+    }
     if id != ItemId::ExplorerMenu {
         return Err(format!("{id:?} is not available on Windows"));
     }
@@ -436,7 +544,18 @@ fn settle_launch(
     if !claims {
         return None;
     }
-    claim_default_apps(prefs, || default_apps::claim(&config_home?, &desktop_id))
+    let undone = prefs.and_then(|prefs| {
+        undo_silent_markdown_claim_once(&prefs, || {
+            default_apps::linux_undo_silent_markdown_claim(&config_home?, &desktop_id)
+        })
+    });
+    match undone {
+        Ok(true) => Some("Oleafly is no longer the default app for Markdown files.".into()),
+        Ok(false) => None,
+        Err(error) => Some(format!(
+            "Oleafly could not hand Markdown files back to the previous app: {error}"
+        )),
+    }
 }
 
 /// Syncs the menu entry and notes in the prefs file at `prefs` that it was written, so a
@@ -497,16 +616,59 @@ pub(crate) fn refresh_launcher_icon() {
 }
 
 #[cfg(target_os = "linux")]
+fn installed_desktop_id(context: &Context) -> Option<String> {
+    match launcher() {
+        Some(launcher) => launcher
+            .entry_path()
+            .is_file()
+            .then(|| format!("{}.desktop", launcher.app_id)),
+        None => packaged_desktop_id(
+            context.product_name.clone(),
+            Path::new("/usr/share/applications"),
+        ),
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn linux_default_item(id: ItemId, desktop_id: &str) -> Result<Item, String> {
+    let ours = default_apps::linux_state(&config_home()?, id, desktop_id)?;
+    Ok(Item {
+        id,
+        state: if ours {
+            ItemState::Installed
+        } else {
+            ItemState::NotInstalled
+        },
+        packaged: false,
+        attention: None,
+        quick_actions_menu: None,
+        menu_title: None,
+    })
+}
+
+#[cfg(target_os = "linux")]
 fn status(context: &Context) -> Result<Status, String> {
     let layout = linux_layout(context)?;
+    let mut items = file_manager::status(&layout);
+    if let Some(desktop_id) = installed_desktop_id(context) {
+        for id in default_apps::ITEMS {
+            items.push(linux_default_item(id, &desktop_id)?);
+        }
+    }
     Ok(Status {
         platform: "linux",
-        items: file_manager::status(&layout),
+        items,
     })
 }
 
 #[cfg(target_os = "linux")]
 fn set(context: &Context, id: ItemId, enabled: bool) -> Result<Item, String> {
+    if default_apps::ITEMS.contains(&id) {
+        let desktop_id = installed_desktop_id(context)
+            .ok_or_else(|| "Oleafly has no menu entry to open files with".to_string())?;
+        default_apps::linux_set(&config_home()?, id, &desktop_id, enabled)?;
+        return linux_default_item(id, &desktop_id);
+    }
     let layout = linux_layout(context)?;
     let label = crate::i18n::t("systemIntegration.openWithOleafly");
     let recorded = file_manager::set(&layout, id, enabled, &label)?;
@@ -573,6 +735,66 @@ pub async fn system_integration_set(
     .await
 }
 
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+const DEFAULT_APPS_OFFERED_PREF: &str = "default_apps_offered";
+
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+fn first_default_apps_offer() -> Result<bool, String> {
+    update_prefs(|prefs| {
+        let offered = prefs
+            .get(DEFAULT_APPS_OFFERED_PREF)
+            .and_then(Value::as_bool)
+            .unwrap_or(false);
+        prefs.insert(DEFAULT_APPS_OFFERED_PREF.to_string(), Value::Bool(true));
+        !offered
+    })
+}
+
+#[cfg(target_os = "macos")]
+fn default_apps_offer(context: &Context) -> Result<Vec<ItemId>, String> {
+    if !integrates_with_the_system() || !first_default_apps_offer()? {
+        return Ok(Vec::new());
+    }
+    Ok(default_apps::ITEMS
+        .into_iter()
+        .filter(|id| {
+            matches!(
+                default_apps::mac_state(*id, &context.identifier),
+                default_apps::MacState::Other
+            )
+        })
+        .collect())
+}
+
+#[cfg(target_os = "linux")]
+fn default_apps_offer(context: &Context) -> Result<Vec<ItemId>, String> {
+    if !integrates_with_the_system() {
+        return Ok(Vec::new());
+    }
+    let Some(desktop_id) = installed_desktop_id(context) else {
+        return Ok(Vec::new());
+    };
+    if !first_default_apps_offer()? {
+        return Ok(Vec::new());
+    }
+    let config_home = config_home()?;
+    Ok(default_apps::ITEMS
+        .into_iter()
+        .filter(|id| !default_apps::linux_state(&config_home, *id, &desktop_id).unwrap_or(true))
+        .collect())
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "linux")))]
+fn default_apps_offer(_context: &Context) -> Result<Vec<ItemId>, String> {
+    Ok(Vec::new())
+}
+
+#[tauri::command]
+pub async fn claim_default_apps_offer(app: AppHandle) -> Result<Vec<ItemId>, String> {
+    let context = Context::of(&app);
+    blocking(move || default_apps_offer(&context)).await
+}
+
 #[tauri::command]
 pub async fn claim_quick_action_offer(app: AppHandle) -> Result<bool, String> {
     let context = Context::of(&app);
@@ -590,15 +812,7 @@ pub(crate) fn lifecycle_plugin<R: Runtime>() -> tauri::plugin::TauriPlugin<R> {
 pub(crate) fn on_run_event<R: Runtime>(app: &AppHandle<R>, event: &tauri::RunEvent) {
     if matches!(event, tauri::RunEvent::Ready) {
         let context = Context::of(app);
-        let claims_defaults = integrates_with_the_system();
         std::thread::spawn(move || {
-            if claims_defaults {
-                if let Some(message) =
-                    claim_default_apps(prefs_path(), || default_apps::claim(&context.identifier))
-                {
-                    log(message);
-                }
-            }
             let Ok(services) = quick_action::services_dir() else {
                 return;
             };

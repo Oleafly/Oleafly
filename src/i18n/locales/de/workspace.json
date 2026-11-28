@@ -40,6 +40,7 @@
     "renameAriaLabel": "Datei umbenennen",
     "renameFailed": "„{{path}}“ konnte nicht umbenannt werden. Der ursprüngliche Pfad blieb unverändert.",
     "setMain": "Als Hauptdokument festlegen",
+    "compileTarget": "Kompilieren erstellt diese Datei, nicht das Hauptdokument",
     "title": "Explorer",
     "treeAriaLabel": "Dateibaum im Explorer",
     "setMainFailed": "„{{path}}“ konnte nicht als Hauptdokument festgelegt werden.",

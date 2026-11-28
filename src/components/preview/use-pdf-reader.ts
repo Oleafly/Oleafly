@@ -73,6 +73,15 @@ function usePdfDarkMode() {
   return { shown: pdfDarkModeShown(mode, theme, colors), setShown, colors };
 }
 
+export function useHtmlDarkMode() {
+  const mode = useSettingsStore((state) => state.htmlDarkMode);
+  const setMode = useSettingsStore((state) => state.setHtmlDarkMode);
+  const theme = useAppTheme();
+  useEffect(followPdfDarkModeInOtherWindows, []);
+  const setShown = useCallback((shown: boolean) => setMode(shown ? "on" : "off"), [setMode]);
+  return { shown: mode === "follow" ? theme === "dark" : mode === "on", setShown };
+}
+
 export interface PdfReaderOptions {
   readonly positionKey: string | null;
   readonly hasDocument: boolean;

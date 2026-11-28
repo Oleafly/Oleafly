@@ -76,7 +76,14 @@ import {
 import { confirmAction } from "@/store/confirm-dialog";
 import { shortcutLabel, shortcutParts, useShortcutStore } from "@/store/shortcuts";
 import { enterZenMode } from "@/lib/zen-mode";
-import { exportCurrentDocument, exportCurrentPdf, exportCurrentImagePng, type DocumentExportFormat } from "@/features/export";
+import { notebookOutput } from "@/lib/notebook-engines";
+import {
+  exportCurrentDocument,
+  exportCurrentImagePng,
+  exportCurrentPagePng,
+  exportCurrentPdf,
+  type DocumentExportFormat,
+} from "@/features/export";
 import { openTypstExport } from "@/components/typst-export/open";
 import { exportRoutesFor } from "@oleafly/conversion-registry";
 import {
@@ -532,6 +539,7 @@ export function TopToolbar() {
   const openProject = useFilesStore((s) => s.openProject);
   const renameProject = useFilesStore((s) => s.renameProject);
   const pdfBytes = useCompileStore((s) => s.pdfBytes);
+  const pageExport = engine.id === "quarto" && notebookOutput(engine) === "html";
   const viewMode = useSettingsStore((s) => s.viewMode);
   const setViewMode = useSettingsStore((s) => s.setViewMode);
   const assistantOpen = useSettingsStore((s) => s.assistantOpen);
@@ -614,13 +622,14 @@ export function TopToolbar() {
   const doDownloadZip = () => doExportFormat("zip");
 
   const doDownloadPdf = async () => {
+    if (pageExport) return doExportFormat("pdf");
     setDlOpen(false);
     await exportCurrentPdf();
   };
 
   const doExportPng = async () => {
     setDlOpen(false);
-    await exportCurrentImagePng();
+    await (pageExport ? exportCurrentPagePng() : exportCurrentImagePng());
   };
 
   const submitFork = async () => {
@@ -707,7 +716,7 @@ export function TopToolbar() {
       <LayoutTemplate className="size-4 text-muted-foreground" />
       {t(($) => $.library.customTemplates.saveAsTemplate)}
     </DropdownMenuItem>
-    {engine.capabilities.produces_pdf && <DropdownMenuItem onSelect={() => void doDownloadPdf()} disabled={!pdfBytes}>
+    {engine.capabilities.produces_pdf && <DropdownMenuItem onSelect={() => void doDownloadPdf()} disabled={!pdfBytes && !pageExport}>
       <FileTypeIcon kind="pdf" className="size-4 text-muted-foreground" />
       {isSingleFigureProject
         ? t(($) => $.shell.toolbar.exportPdfVector)
@@ -720,7 +729,7 @@ export function TopToolbar() {
       </DropdownMenuItem>
     )}
     {!isSingleFigureProject && engine.capabilities.produces_pdf && (
-      <DropdownMenuItem onSelect={() => void doExportPng()} disabled={!pdfBytes}>
+      <DropdownMenuItem onSelect={() => void doExportPng()} disabled={!pdfBytes && !pageExport}>
         <FileTypeIcon kind="png" className="size-4 text-muted-foreground" />
         {t(($) => $.shell.toolbar.exportPagePng)}
       </DropdownMenuItem>
@@ -737,7 +746,7 @@ export function TopToolbar() {
         {t(($) => $.shell.typstExport.menuItem)}
       </DropdownMenuItem>
     )}
-    {!pdfBytes && (
+    {!pdfBytes && !pageExport && (
       <p className="px-2 py-1 pl-8 text-[0.625rem] text-muted-foreground">
         {isSingleFigureProject
           ? t(($) => $.shell.toolbar.compileFigureFirst)

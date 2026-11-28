@@ -430,7 +430,7 @@
       "off": "Off",
       "on": "On",
       "title": "Auto compile",
-      "help": "Compiles a few seconds after you stop typing. The open file is saved first.",
+      "help": "Compiles a few seconds after you stop typing, saving the open file first. After Stop, it waits for your next edit. A project that runs code compiles on open only while this is on.",
       "typstHelp": "Typst keeps running and updates the PDF a moment after you stop typing. The open file saves on its own while this is on.",
       "typstStarting": "Starting Typst",
       "typstRestarting": "Typst is restarting",
@@ -454,6 +454,7 @@
       "title": "Compile error handling"
     },
     "fromScratch": "Recompile from scratch",
+    "wholeProject": "Render the whole Quarto project",
     "mode": {
       "fast": "Fast <note>[draft]</note>",
       "normal": "Normal",
@@ -470,9 +471,8 @@
     },
     "texRootBroken": "% !TEX root in {{file}} points to a missing file ({{target}})",
     "texRootLabel": "TEX root",
-    "texRootName": "root: {{name}}",
     "texRootNotTex": "% !TEX root in {{file}} points to {{target}}, which isn't a LaTeX file",
-    "texRootOverride": "root: {{path}} (set by % !TEX root in {{file}})",
+    "texRootOverride": "Compiles {{path}} (set by % !TEX root in {{file}})",
     "typstVersion": {
       "title": "Typst version (this project)",
       "help": "Pin a version to keep this project's output the same when Oleafly updates Typst. Default follows the version chosen in Settings. To install versions or test this project on a newer one, go to Settings → Engines → Typst.",
@@ -513,18 +513,19 @@
     },
     "code": {
       "title": "Code (this computer)",
-      "help": "Quarto and Calepin can run the R, Python and Julia code in this project. Code runs with your permissions, so allow it only for a project you trust. The choice applies to this computer only.",
+      "help": "Quarto and Calepin can run the R, Python and Julia code in this project. Code runs with your permissions, so allow it only for a project you trust. The choice applies to this computer only and stays until you turn it off. Turning it off stops a compile that is running.",
       "off": "Off",
       "run": "Run code on this computer"
     },
     "sharedViewer": "Only owners and editors can change these settings in a shared project.",
     "coauthorsChanged": "Changed by coauthors since your last compile",
-    "texRootDocument": "root: {{path}} (it has its own \\documentclass)",
-    "texRootInclude": "root: {{path}} (it includes {{file}})",
-    "texRootFormat": "root: {{path}} (a {{format}} document, built with its own engine)",
+    "texRootDocument": "Compiles {{path}} (it has its own \\documentclass)",
+    "texRootStandalone": "Compiles {{path}} (a document of its own)",
+    "texRootInclude": "Compiles {{path}} (it includes {{file}})",
+    "texRootFormat": "Compiles {{path}} (a {{format}} document, built with its own engine)",
     "target": {
       "title": "Compile target",
-      "help": "With Follow the open file, a file that has its own \\documentclass compiles by itself, and a chapter or section compiles the document that includes it. A Markdown, Typst or Quarto document compiles by itself with its own engine when the project is in another format. Other files compile the main document. A % !TEX root comment always wins.",
+      "help": "With Follow the open file, a document of its own compiles by itself: a LaTeX file with its own \\documentclass, or a Markdown, Typst or Quarto file that no other document includes. A chapter or section compiles the document that includes it, and the files of a _quarto.yml project compile with the project. Other files compile the main document. A % !TEX root comment always wins.",
       "open": "Follow the open file",
       "main": "Always the main document",
       "change": "Change main document…"
@@ -668,7 +669,16 @@
     "followed": "{{name}} has to run code, and code only runs for the main document. Make {{name}} the main document, then allow code for it.",
     "needed": "This document has to run its code to build, and code is off for this project. Allow code only if you trust every file in the project.",
     "skipped": "The code in this document did not run because code is off for this project. Allow code only if you trust every file in the project.",
-    "storedResults": "The PDF shows code results stored from an earlier run because code is off for this project. Allow code only if you trust every file in the project."
+    "storedResults": "The PDF shows code results stored from an earlier run because code is off for this project. Allow code only if you trust every file in the project.",
+    "reasons": {
+      "extensions": "This project has Quarto extensions, which can run programs, so it builds only with code allowed. Allow code only if you trust every file in the project.",
+      "environment": "This project has _environment files that Quarto loads, so it builds only with code allowed. Allow code only if you trust every file in the project.",
+      "shortcode": "This document uses a shortcode that isn't built into Quarto, and shortcodes can run programs, so it builds only with code allowed. Allow code only if you trust every file in the project.",
+      "filter": "This document adds a filter, and filters can run programs, so it builds only with code allowed. Allow code only if you trust every file in the project.",
+      "pdf_engine": "This document passes options to the PDF engine, which can run programs, so it builds only with code allowed. Allow code only if you trust every file in the project.",
+      "outside": "This document reads a file outside the project, so it builds only with code allowed. Allow code only if you trust every file in the project.",
+      "unchecked": "Oleafly couldn't check this document for code, so it builds only with code allowed. Allow code only if you trust every file in the project."
+    }
   },
   "typstCjkFonts": {
     "message": "This document has Chinese, Japanese or Korean text that no font on this computer can show, so the PDF leaves it out.",
@@ -825,7 +835,7 @@
     },
     "noMain": "No main document yet. Pick a file and choose Set as main document.",
     "trust": {
-      "banner": "Oleafly limited some features in this folder. Trust it to turn on Git, terminal, agents and shell escape?",
+      "banner": "Oleafly limited some features in this folder. Trust it to turn on Git, the terminal, agents, latexmk and Quarto?",
       "trustFolder": "Trust this folder",
       "trustParent": "Trust the parent folder",
       "trustRepository": "Trust the repository",
@@ -1808,5 +1818,20 @@
       "saved": "Saved {{name}}.",
       "missingName": "Give the snippet a name."
     }
+  },
+  "defaultAppsOffer": {
+    "title": "Open your documents with Oleafly?",
+    "body": "Pick the file types that should open in Oleafly when you double-click them. Oleafly only asks once. You can change this later in Settings › General.",
+    "types": {
+      "latex": "LaTeX (.tex)",
+      "typst": "Typst (.typ)",
+      "markdown": "Markdown (.md)",
+      "quarto": "Quarto and R Markdown (.qmd, .Rmd)"
+    },
+    "use": "Use Oleafly",
+    "keep": "Keep my apps",
+    "done": "Done. These files now open in Oleafly.",
+    "doneMac": "Done. If macOS asks you to confirm a type another app opens now, choose Use Oleafly.",
+    "failed": "Some file types couldn't be changed. Try again in Settings › General."
   }
 }

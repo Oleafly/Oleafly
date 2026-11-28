@@ -325,7 +325,15 @@
     "notChecked": "검사 안 함",
     "dictionaryMissing": "{{name}} 사전이 다운로드되지 않아 맞춤법을 검사하지 않습니다. 설정에서 다운로드하거나 다른 언어를 선택하세요.",
     "grammarEnglishOnly": "문법 검사는 영어 문서에서만 작동합니다.",
-    "spellLanguageNotDownloaded": "{{name}}(다운로드 안 됨)"
+    "spellLanguageNotDownloaded": "{{name}}(다운로드 안 됨)",
+    "code": {
+      "title": "Code on this computer",
+      "run": "Run this project's code when compiling",
+      "hint": "R, Python and Julia chunks and LaTeX shell commands run with your permissions. Oleafly keeps this choice until you turn it off here.",
+      "restrictedHint": "Trust this folder first. Code never runs in a folder you haven't trusted.",
+      "trust": "Trust this folder",
+      "stopTrusting": "Stop trusting this folder"
+    }
   },
   "table": {
     "trigger": "표 삽입",

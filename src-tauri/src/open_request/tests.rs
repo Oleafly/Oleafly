@@ -1492,6 +1492,56 @@ fn a_file_opens_its_folder_and_becomes_the_main_document_when_the_folder_has_non
 }
 
 #[test]
+fn a_folder_linked_only_to_open_one_file_stays_out_of_the_library_until_the_folder_is_opened() {
+    let data = DataDir::new();
+    let notes = data.folder("work/notes", &[("README.md", "# Notes\n")]);
+    let validated = validate(&notes.join("README.md")).unwrap();
+    let reply = open_validated(&validated, None, &SingleWindowRouter).unwrap();
+    let loose = |id: &str| crate::linked_registry::get(id).unwrap().unwrap().loose_file;
+    assert!(loose(&reply.project_id));
+    let again = open_validated(&validated, None, &SingleWindowRouter).unwrap();
+    assert_eq!(again.project_id, reply.project_id);
+    assert!(loose(&reply.project_id));
+    let folder = opened(&notes, None);
+    assert_eq!(folder.project_id, reply.project_id);
+    assert!(!loose(&reply.project_id));
+    let reopened = open_validated(&validated, None, &SingleWindowRouter).unwrap();
+    assert!(!loose(&reopened.project_id));
+}
+
+#[test]
+fn a_chapter_opened_on_its_own_opens_the_whole_book_or_thesis_it_belongs_to() {
+    let data = DataDir::new();
+    let book = data.folder(
+        "work/book",
+        &[
+            ("_quarto.yml", "project:\n  type: book\n"),
+            ("index.qmd", "# Preface\n"),
+            ("parts/one/chapter.qmd", "# One\n"),
+        ],
+    );
+    let validated = validate(&book.join("parts/one/chapter.qmd")).unwrap();
+    assert_eq!(validated.canonical, book);
+    assert_eq!(validated.file.as_deref(), Some("parts/one/chapter.qmd"));
+    assert_eq!(
+        preview(&validated).map(|preview| preview.display_name),
+        Ok("chapter.qmd".to_owned())
+    );
+    let reply = open_validated(&validated, None, &SingleWindowRouter).unwrap();
+    assert_eq!(reply.file.as_deref(), Some("parts/one/chapter.qmd"));
+
+    let analysis = data.folder(
+        "work/analysis",
+        &[
+            ("analysis.Rproj", "Version: 1.0\n"),
+            ("scripts/report.Rmd", "# Report\n"),
+        ],
+    );
+    let validated = validate(&analysis.join("scripts/report.Rmd")).unwrap();
+    assert_eq!(validated.canonical, analysis);
+}
+
+#[test]
 fn a_file_inside_an_opened_folder_opens_in_that_project_and_keeps_its_main_document() {
     let data = DataDir::new();
     let thesis = data.folder(
@@ -1503,7 +1553,8 @@ fn a_file_inside_an_opened_folder_opens_in_that_project_and_keeps_its_main_docum
     );
     let project = opened(&thesis, None).project_id;
     let validated = validate(&thesis.join("chapters/intro.tex")).unwrap();
-    assert_eq!(validated.canonical, thesis.join("chapters"));
+    assert_eq!(validated.canonical, thesis);
+    assert_eq!(validated.file.as_deref(), Some("chapters/intro.tex"));
     let reply = open_validated(&validated, None, &SingleWindowRouter).unwrap();
     assert_eq!(reply.project_id, project);
     assert_eq!(reply.file.as_deref(), Some("chapters/intro.tex"));
