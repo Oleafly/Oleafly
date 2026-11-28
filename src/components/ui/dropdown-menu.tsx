@@ -3,6 +3,7 @@ import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { ChevronLeft, ChevronRight, Circle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CheckBadge } from "@/components/ui/check-badge";
+import { useInsideModalShell } from "@/components/ui/modal-shell";
 
 type SubmenuSide = "left" | "right";
 
@@ -17,11 +18,17 @@ function useTextDirection() {
 // Radix opens submenus on the left only in a right-to-left menu, so the menu is rtl and its panels are drawn ltr.
 function DropdownMenu({
   submenuSide = "right",
+  modal,
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Root> & { submenuSide?: SubmenuSide }) {
+  const insideModal = useInsideModalShell();
   return (
     <SubmenuSideContext.Provider value={submenuSide}>
-      <DropdownMenuPrimitive.Root {...props} dir={submenuSide === "left" ? "rtl" : props.dir} />
+      <DropdownMenuPrimitive.Root
+        {...props}
+        modal={modal ?? !insideModal}
+        dir={submenuSide === "left" ? "rtl" : props.dir}
+      />
     </SubmenuSideContext.Provider>
   );
 }
@@ -41,6 +48,7 @@ const DropdownMenuContent = React.forwardRef<
     <DropdownMenuPrimitive.Portal>
       <DropdownMenuPrimitive.Content
         {...textDirection}
+        data-modal-escape-inner=""
         ref={ref}
         sideOffset={sideOffset}
         className={cn(
@@ -129,6 +137,7 @@ const DropdownMenuSubContent = React.forwardRef<
   return (
     <DropdownMenuPrimitive.SubContent
       {...textDirection}
+      data-modal-escape-inner=""
       ref={ref}
       className={cn(
         "z-50 min-w-40 overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-xl data-[state=closed]:hidden",

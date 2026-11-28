@@ -20,6 +20,8 @@ describe("SettingsToggleRow", () => {
     fireEvent.keyDown(toggle, { key: "Enter" });
     fireEvent.keyDown(toggle, { key: " " });
     fireEvent.keyDown(toggle, { key: "ArrowRight" });
+    fireEvent.keyDown(toggle, { key: " ", repeat: true });
+    fireEvent.keyDown(toggle, { key: "Enter", repeat: true });
     expect(onChange.mock.calls).toEqual([[true], [true], [true]]);
 
     view.rerender(

@@ -43,7 +43,7 @@ export function SnippetBodyEditor({
   }, [language, showSyntax, captures]);
   return (
     <CodeField
-      key={`${language}:${showSyntax}:${captures}`}
+      key={language}
       value={value}
       onChange={(next) => onChange?.(next)}
       language={extensions}

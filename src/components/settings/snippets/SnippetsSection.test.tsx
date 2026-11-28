@@ -163,6 +163,35 @@ describe("Settings › Snippets", () => {
     expect(actions.setCollectionEnabled).toHaveBeenCalledWith("paper-structure", false);
   });
 
+  it("dims the rows of a collection that is turned off", () => {
+    ready({ state: { disabledCollections: ["paper-structure"] } });
+    render(<SnippetsSection />);
+    const [, , fraction, figure] = screen.getAllByTestId("snippet-row");
+    expect(figure).toHaveClass("[&>td]:opacity-60");
+    expect(fraction).not.toHaveClass("[&>td]:opacity-60");
+  });
+
+  it("renders only the rows in view of a long list", () => {
+    const entries = Object.fromEntries(
+      Array.from({ length: 200 }, (_, index) => [`many.${index}`, { name: `Snippet ${index}`, prefix: `s${index}`, body: "x" }]),
+    );
+    ready({ files: [file("many", "pack", entries)] });
+    render(<SnippetsSection />);
+    expect(rows().length).toBeLessThan(40);
+    expect(rows()[0]).toBe("s0");
+    expect(screen.getByRole("table")).toHaveAttribute("aria-rowcount", "201");
+    expect(screen.getByText("200 of 200")).toBeInTheDocument();
+  });
+
+  it("turns on expansion as you type when Fast math is turned on from the collections", async () => {
+    ready({ files: [FAST, MINE], state: { disabledCollections: ["fast-math-latex"] } });
+    useSettingsStore.getState().setSnippetsAuto(false);
+    render(<SnippetsSection />);
+    await userEvent.click(screen.getByRole("switch", { name: "Use Fast math · LaTeX" }));
+    expect(actions.setCollectionEnabled).toHaveBeenCalledWith("fast-math-latex", true);
+    expect(useSettingsStore.getState().snippetsAuto).toBe(true);
+  });
+
   it("marks changed and turned-off built-ins and restores them", async () => {
     const overrides: SnippetOverride[] = [
       { id: "latex.slash.table", collection: "builtin-latex-slash", patch: { trigger: "/tab" } },

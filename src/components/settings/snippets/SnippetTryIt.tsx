@@ -1,10 +1,10 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { EditorView } from "@codemirror/view";
 import { CircleCheck, CircleMinus } from "lucide-react";
 import { languageForPath, type SnippetPort } from "@oleafly/editor";
 import { snippetEditorExtensions } from "@oleafly/editor/snippets/runtime";
-import { buildLibrary, placeAllows, type SnippetLanguage, type SnippetRecord } from "@oleafly/snippets";
+import { buildLibrary, type Place, placeAllows, type SnippetLanguage, type SnippetLibrary, type SnippetRecord } from "@oleafly/snippets";
 import { CodeField } from "@/components/tools/CodeField";
 import { Chip } from "@/components/ui/chip";
 import { createSnippetPort } from "@/features/snippets/port";
@@ -26,18 +26,29 @@ function mathPlaceOf(record: SnippetRecord): MathPlace {
   return record.place === "display-math" ? "display-math" : "inline-math";
 }
 
-function tryPort(record: SnippetRecord, language: SnippetLanguage): SnippetPort {
+const libraries = new WeakMap<SnippetRecord, SnippetLibrary>();
+
+function libraryOf(record: SnippetRecord): SnippetLibrary {
+  let library = libraries.get(record);
+  if (!library) {
+    library = buildLibrary({
+      files: [{ collection: record.collection, records: [record], problems: [] }],
+      disabledCollections: new Set(),
+      overrides: [],
+      disabledRegex: new Set(),
+    });
+    libraries.set(record, library);
+  }
+  return library;
+}
+
+function tryPort(record: () => SnippetRecord, language: SnippetLanguage): SnippetPort {
   const path = SAMPLE_PATH[language];
-  const library = buildLibrary({
-    files: [{ collection: record.collection, records: [record], problems: [] }],
-    disabledCollections: new Set(),
-    overrides: [],
-    disabledRegex: new Set(),
-  });
   return {
     ...createSnippetPort(() => path),
-    library: () => library,
+    library: () => libraryOf(record()),
     language: () => language,
+    editSnippet: undefined,
     enabled: () => ({ list: true, tab: true, auto: true, hint: true }),
     recordUse: () => undefined,
     onAutoExpanded: () => undefined,
@@ -60,9 +71,15 @@ export function SnippetTryIt({
   const [chosen, setChosen] = useState<SnippetLanguage>(languages[0] ?? "latex");
   const language = languages.includes(chosen) ? chosen : (languages[0] ?? "latex");
   const mathDoc = MATH_DOCS[language]?.[mathPlaceOf(record)];
-  const [place, setPlace] = useState<TryPlace>(mathDoc && isMathPlace(record.place) ? "math" : "text");
+  const [picked, setPicked] = useState<{ readonly where: Place; readonly place: TryPlace } | null>(null);
+  const place: TryPlace = picked?.where === record.place ? picked.place : isMathPlace(record.place) ? "math" : "text";
+  const setPlace = (next: TryPlace) => setPicked({ where: record.place, place: next });
   const activePlace: TryPlace = mathDoc ? place : "text";
-  const port = useMemo(() => tryPort(record, language), [record, language]);
+  const latest = useRef(record);
+  useLayoutEffect(() => {
+    latest.current = record;
+  }, [record]);
+  const port = useMemo(() => tryPort(() => latest.current, language), [language]);
   const extensions = useCallback(() => [languageForPath(SAMPLE_PATH[language]) ?? [], snippetEditorExtensions(port)], [port, language]);
   const doc = activePlace === "math" && mathDoc ? mathDoc : "|";
   const caret = doc.indexOf("|");

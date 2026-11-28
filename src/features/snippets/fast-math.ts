@@ -26,6 +26,13 @@ export function setFastMath(language: FastMathLanguage, on: boolean): Promise<vo
   return useSnippetStore.getState().setCollectionEnabled(FAST_MATH_COLLECTIONS[language], on);
 }
 
+export function setSnippetCollectionEnabled(collection: string, on: boolean): Promise<void> {
+  const language = (Object.keys(FAST_MATH_COLLECTIONS) as FastMathLanguage[]).find(
+    (candidate) => FAST_MATH_COLLECTIONS[candidate] === collection,
+  );
+  return language ? setFastMath(language, on) : useSnippetStore.getState().setCollectionEnabled(collection, on);
+}
+
 export async function toggleFastMath(language: FastMathLanguage): Promise<void> {
   try {
     await snippetsReady();

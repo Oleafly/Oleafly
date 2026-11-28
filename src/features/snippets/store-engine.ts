@@ -63,6 +63,13 @@ let loading: Promise<void> | null = null;
 let fetchingPacks: Promise<PackSet | null> | null = null;
 let writing: Promise<unknown> = Promise.resolve();
 let watching = false;
+const pendingEdits: PendingEdit[] = [];
+
+type StateEdit = (state: SnippetState) => SnippetState;
+
+interface PendingEdit {
+  readonly edit: StateEdit;
+}
 
 function bundledFiles(): ParsedSnippetFile[] {
   bundled ??= BUNDLED.map(([collection, text]) => parseSnippetFile(text, collection, "builtin"));
@@ -281,7 +288,7 @@ function readUserFile(entry: SnippetFileEntry, good: ParsedSnippetFile | null): 
   return { ...base, parsed: good ? { ...good, problems: parsed.problems } : parsed, good };
 }
 
-function sameFiles(left: readonly DiskFile[], right: readonly DiskFile[]): boolean {
+function sameFiles<T>(left: readonly T[], right: readonly T[]): boolean {
   return left.length === right.length && left.every((file, index) => file === right[index]);
 }
 
@@ -336,20 +343,27 @@ async function refresh(force: boolean): Promise<void> {
     : { state: defaults, problems: [] };
   const disk = readDisk(entries, current.disk, stateProblems);
   if (current.status === "ready" && disk === current.disk && packs === current.packs && !force) return;
-  const state = withNewPackDefaults(stored, packs);
-  const files = [
+  const state = pendingEdits.reduce((next, pending) => pending.edit(next), withNewPackDefaults(stored, packs));
+  const listed = [
     ...bundledFiles(),
     ...(packs?.files ?? []),
     ...disk.filter((file) => file.name !== STATE_FILE).map((file) => file.parsed),
   ];
+  const ready = current.status === "ready";
+  const files = ready && sameFiles(listed, current.files) ? current.files : listed;
+  const sameState = ready && sameValue(state, current.state) && sameValue(stateProblems, current.stateProblems);
+  if (ready && files === current.files && sameState && packs === current.packs) {
+    if (disk !== current.disk) useSnippetStore.setState({ disk });
+    return;
+  }
+  const kept = sameState ? { state: current.state, stateProblems: current.stateProblems } : { state, stateProblems };
   useSnippetStore.setState({
     status: "ready",
     disk,
     packs,
     files,
-    state,
-    stateProblems,
-    library: libraryOf(files, state, stateProblems),
+    ...kept,
+    library: libraryOf(files, kept.state, kept.stateProblems),
   });
 }
 
@@ -379,7 +393,7 @@ export function load(force = false): Promise<void> {
 
 function queued<T>(change: () => Promise<T>): Promise<T> {
   const run = writing.then(async () => {
-    await load(true);
+    await load();
     return change();
   });
   writing = run.catch(() => undefined);
@@ -402,17 +416,76 @@ function withNewPackDefaults(state: SnippetState, packs: PackSet | null): Snippe
   return added.length ? { ...state, disabledCollections: [...state.disabledCollections, ...added] } : state;
 }
 
-function refused(file: DiskFile): Promise<never> {
-  return Promise.reject(new Error(`${file.name} has problems to fix before it can be changed here`));
+function refusal(file: DiskFile): Error {
+  return new Error(`${file.name} has problems to fix before it can be changed here`);
 }
 
-function writeState(next: SnippetState): Promise<void> {
-  const store = useSnippetStore.getState();
-  const file = store.disk.find((candidate) => candidate.name === STATE_FILE);
-  if (file && wholeFileProblem(file.parsed)) return refused(file);
-  const state = store.packs ? { ...next, knownCollections: store.packs.files.map((pack) => pack.collection) } : next;
-  rebuild({ state });
-  return afterWrite(() => writeSnippetFile(STATE_FILE, serializeSnippetState(state)));
+function refused(file: DiskFile): Promise<never> {
+  return Promise.reject(refusal(file));
+}
+
+function stateFileProblem(): DiskFile | null {
+  const file = useSnippetStore.getState().disk.find((candidate) => candidate.name === STATE_FILE);
+  return file && wholeFileProblem(file.parsed) ? file : null;
+}
+
+function withKnownCollections(state: SnippetState): SnippetState {
+  const packs = useSnippetStore.getState().packs;
+  return packs ? { ...state, knownCollections: packs.files.map((pack) => pack.collection) } : state;
+}
+
+function forget(pending: readonly PendingEdit[]): void {
+  for (const entry of pending) {
+    const index = pendingEdits.indexOf(entry);
+    if (index >= 0) pendingEdits.splice(index, 1);
+  }
+}
+
+async function flushState(owner: PendingEdit): Promise<void> {
+  if (!pendingEdits.includes(owner)) return;
+  const taken = [...pendingEdits];
+  try {
+    const problem = stateFileProblem();
+    if (problem) throw refusal(problem);
+    const state = withKnownCollections(useSnippetStore.getState().state);
+    await writeSnippetFile(STATE_FILE, serializeSnippetState(state));
+    forget(taken);
+  } catch (error) {
+    forget([owner]);
+    throw error;
+  } finally {
+    await load(true).catch((error: unknown) => logError("load snippets", error));
+  }
+}
+
+function stageEdit(edit: StateEdit): PendingEdit | null {
+  const state = useSnippetStore.getState().state;
+  const next = edit(state);
+  if (sameValue(next, state)) return null;
+  const problem = stateFileProblem();
+  if (problem) throw refusal(problem);
+  const pending = { edit };
+  pendingEdits.push(pending);
+  rebuild({ state: next });
+  return pending;
+}
+
+async function editStateInQueue(edit: StateEdit): Promise<void> {
+  const pending = stageEdit(edit);
+  if (pending) await flushState(pending);
+}
+
+function editState(edit: StateEdit): Promise<void> {
+  if (useSnippetStore.getState().status !== "ready" || stateFileProblem()) return queued(() => editStateInQueue(edit));
+  let pending: PendingEdit | null;
+  try {
+    pending = stageEdit(edit);
+  } catch (error) {
+    return Promise.reject(error);
+  }
+  if (!pending) return Promise.resolve();
+  const owner = pending;
+  return queued(() => flushState(owner));
 }
 
 function userFile(collection: string): DiskFile | undefined {
@@ -430,11 +503,16 @@ function findOverride(id: string, collection: string): SnippetOverride | undefin
   return useSnippetStore.getState().state.overrides.find((override) => sameOverride(override, id, collection));
 }
 
+function overrideEdit(change: OverrideChange): StateEdit {
+  return (state) => {
+    const overrides = state.overrides.filter((override) => !sameOverride(override, change.id, change.collection));
+    if (!("clear" in change)) overrides.push(change);
+    return { ...state, overrides };
+  };
+}
+
 function applyOverride(change: OverrideChange): Promise<void> {
-  const state = useSnippetStore.getState().state;
-  const overrides = state.overrides.filter((override) => !sameOverride(override, change.id, change.collection));
-  if (!("clear" in change)) overrides.push(change);
-  return writeState({ ...state, overrides });
+  return editStateInQueue(overrideEdit(change));
 }
 
 async function applyRecord(collection: string, record: SnippetRecord): Promise<void> {
@@ -457,7 +535,7 @@ async function applyRecord(collection: string, record: SnippetRecord): Promise<v
 }
 
 export function setOverride(change: OverrideChange): Promise<void> {
-  return queued(() => applyOverride(change));
+  return editState(overrideEdit(change));
 }
 
 export function saveRecord(collection: string, record: SnippetRecord): Promise<void> {
@@ -472,12 +550,10 @@ export function deleteRecord(collection: string, id: string): Promise<void> {
 }
 
 export function setCollectionEnabled(collection: string, enabled: boolean): Promise<void> {
-  return queued(async () => {
-    const state = useSnippetStore.getState().state;
+  return editState((state) => {
     const others = state.disabledCollections.filter((name) => name !== collection);
     const disabledCollections = enabled ? others : [...others, collection];
-    if (sameValue(disabledCollections, state.disabledCollections)) return;
-    return writeState({ ...state, disabledCollections });
+    return sameValue(disabledCollections, state.disabledCollections) ? state : { ...state, disabledCollections };
   });
 }
 
@@ -497,18 +573,18 @@ export function importVsCodeFile(fileName: string, text: string): Promise<Parsed
 }
 
 export function disableRegex(id: string): Promise<void> {
-  return queued(async () => {
-    const state = useSnippetStore.getState().state;
-    if (state.disabledRegex.includes(id)) return;
-    return writeState({ ...state, disabledRegex: [...state.disabledRegex, id] });
-  });
+  return editState((state) =>
+    state.disabledRegex.includes(id) ? state : { ...state, disabledRegex: [...state.disabledRegex, id] },
+  );
 }
 
 export function importSnippetSettingsFiles(files: readonly SnippetFileText[]): Promise<void> {
-  return queued(() => {
-    const existing = new Map(useSnippetStore.getState().disk.map((file) => [file.name.toLowerCase(), file.name]));
-    return afterWrite(async () => {
-      for (const file of files) await writeSnippetFile(existing.get(file.name.toLowerCase()) ?? file.name, file.text);
+  return queued(async () => {
+    const existing = new Map(useSnippetStore.getState().disk.map((file) => [file.name.toLowerCase(), file]));
+    const changed = files.filter((file) => existing.get(file.name.toLowerCase())?.text !== file.text);
+    if (changed.length === 0) return;
+    await afterWrite(async () => {
+      for (const file of changed) await writeSnippetFile(existing.get(file.name.toLowerCase())?.name ?? file.name, file.text);
     });
   });
 }

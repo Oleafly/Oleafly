@@ -529,7 +529,12 @@ draws its own panel adds the attribute. Don't tint the panel underneath it.
 A `Dialog` is on the same modal stack as `ModalShell`. A dialog opened from
 Settings, or from another dialog, gets Escape, Tab and outside clicks to
 itself, and the one underneath stays open until its turn comes. When a
-`Dialog` closes, focus goes back to the control that opened it. Settings is the
+`Dialog` closes, focus goes back to the control that opened it. A
+`DropdownMenu` inside a `ModalShell` is non-modal unless it passes `modal`.
+A modal menu marks everything outside it `aria-hidden`, and WebKit then
+re-checks the whole dialog for accessibility on every open, close and hover.
+With a large section open and an accessibility client running, the app hangs.
+Escape in an open menu or select closes only the menu. Settings is the
 same size on every section and tab. A section that needs more room arranges
 itself by its own width with a container query. The Notes appearance preview
 does this: it sits beside the options when there is room and above them when
